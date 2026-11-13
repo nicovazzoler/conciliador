@@ -1,5 +1,6 @@
 """Gastos y pagos de tarjeta que no vienen en un PDF. Acá se valida y se pregunta; guarda base.py."""
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date, datetime
 from uuid import uuid4
 
@@ -38,6 +39,56 @@ def leer_monto(texto: str) -> int:
     return centavos
 
 
+@dataclass(frozen=True)
+class Aviso:
+    """Algo que hay que confirmar antes de guardar. El mensaje es el mismo en la terminal y en la web."""
+
+    codigo: str  # "igual_al_anterior", "lejos_de_lo_previsto" o "grande_sin_anticipar"
+    mensaje: str
+
+
+def preparar_gasto(
+    monto: str, descripcion: str, fecha: date, moneda: str = "ARS", medio: str = "efectivo"
+) -> FilaLeida:
+    """Valida y arma la fila. No toca la base."""
+    descripcion = descripcion.strip()
+    if not descripcion:
+        raise ValueError("la descripción no puede estar vacía")
+    if medio not in MEDIOS:
+        raise ValueError(f"medio inválido: {medio!r}. Opciones: {', '.join(MEDIOS)}")
+    if moneda not in ("ARS", "USD"):
+        raise ValueError(f"moneda inválida: {moneda!r}")
+    return FilaLeida(uuid4().hex, fecha, descripcion, -leer_monto(monto), moneda, tipo="consumo")
+
+
+def evaluar_gasto(motor: base.Engine, fila: FilaLeida) -> list[Aviso]:
+    """Lo que hay que confirmar antes de guardar. No pregunta nada: eso lo decide quien llama."""
+    avisos = []
+    monto = f"{fila.moneda} {importe(fila.monto_centavos)}"
+
+    # No es detección de repetidos: es un "¿seguro?" por si el mismo gasto se mandó dos veces.
+    if base.ultimo_manual(motor) == (fila.fecha, fila.monto_centavos, fila.descripcion):
+        avisos.append(Aviso("igual_al_anterior", "Es igual al último gasto que cargaste."))
+
+    evaluacion = base.evaluar(motor, fila)
+    if _lejos_de_lo_previsto(fila, evaluacion.previsto):
+        concepto, previsto, _ = evaluacion.previsto
+        avisos.append(Aviso(
+            "lejos_de_lo_previsto",
+            f"{concepto} está anotado en {fila.moneda} {importe(previsto)}, y cargaste {importe(fila.monto_centavos)}.",
+        ))
+    if evaluacion.grande_sin_anticipar:
+        avisos.append(Aviso("grande_sin_anticipar", f"{monto} es un gasto grande sin anticipar."))
+    return avisos
+
+
+def guardar_gasto(
+    motor: base.Engine, fila: FilaLeida, medio: str, categoria: str | None = None
+) -> tuple[str | None, str | None]:
+    """Guarda sin preguntar. Devuelve (categoría, concepto del plan)."""
+    return base.guardar_manual(motor, fila, medio=medio, categoria=categoria)
+
+
 def registrar_gasto(
     motor: base.Engine,
     monto: str,
@@ -48,39 +99,23 @@ def registrar_gasto(
     preguntar: Callable[[str], str] = input,
     mostrar: Callable[[str], None] = print,
 ) -> bool:
-    """Devuelve si se guardó."""
-    descripcion = descripcion.strip()
-    if not descripcion:
-        raise ValueError("la descripción no puede estar vacía")
-    if medio not in MEDIOS:
-        raise ValueError(f"medio inválido: {medio!r}. Opciones: {', '.join(MEDIOS)}")
-    fila = FilaLeida(uuid4().hex, fecha, descripcion, -leer_monto(monto), moneda, tipo="consumo")
-
-    # No es detección de repetidos: es un "¿seguro?" por si el mismo comando se mandó dos veces.
-    if base.ultimo_manual(motor) == (fila.fecha, fila.monto_centavos, fila.descripcion):
-        if not _si(preguntar("Es igual al último gasto que cargaste. ¿Lo guardo igual? [s/N]: ")):
-            mostrar("No se guardó.")
-            return False
-
-    evaluacion = base.evaluar(motor, fila)
-    if _lejos_de_lo_previsto(fila, evaluacion.previsto):
-        concepto, previsto, _ = evaluacion.previsto
-        aviso = f"{concepto} está anotado en {moneda} {importe(previsto)}, y cargaste {importe(fila.monto_centavos)}."
-        if not _si(preguntar(f"{aviso} ¿Es correcto? [s/N]: ")):
+    """La versión de la terminal: pregunta por cada aviso. Devuelve si se guardó."""
+    fila = preparar_gasto(monto, descripcion, fecha, moneda, medio)
+    avisos = evaluar_gasto(motor, fila)
+    for aviso in avisos:
+        if not _si(preguntar(f"{aviso.mensaje} ¿Lo guardo igual? [s/N]: ")):
             mostrar("No se guardó.")
             return False
 
     categoria = None
-    if evaluacion.grande_sin_anticipar:
-        aviso = f"{moneda} {importe(fila.monto_centavos)} es un gasto grande sin anticipar."
-        if not _si(preguntar(f"{aviso} ¿Lo guardo? [s/N]: ")):
-            mostrar("No se guardó.")
-            return False
+    if any(a.codigo == "grande_sin_anticipar" for a in avisos):
         categoria = preguntar("Categoría (Enter para dejarlo en revisar): ").strip() or None
 
-    categoria, del_plan = base.guardar_manual(motor, fila, medio=medio, categoria=categoria)
+    categoria, del_plan = guardar_gasto(motor, fila, medio, categoria)
     detalle = f"fijo o cuota: {del_plan}" if del_plan else (categoria or "para revisar")
-    mostrar(f"Guardado: {fecha:%d/%m/%Y}  {moneda} {importe(fila.monto_centavos)}  {descripcion}  ({detalle})")
+    mostrar(
+        f"Guardado: {fecha:%d/%m/%Y}  {moneda} {importe(fila.monto_centavos)}  {fila.descripcion}  ({detalle})"
+    )
     return True
 
 

@@ -130,3 +130,19 @@ def test_borrar_sin_confirmar_no_borra(tmp_path):
     (pago,) = base.manuales(motor)
     assert not manual.borrar(motor, pago["id"], preguntar=lambda _: "n", mostrar=print)
     assert len(base.manuales(motor)) == 1
+
+
+def test_evaluar_no_pregunta_y_devuelve_los_avisos(tmp_path):
+    """$500.000 a la obra social: es lejos de lo anotado. No es grande sin anticipar, porque
+    al vincularse con el fijo cuenta como anticipado."""
+    motor = demo(tmp_path)
+    fila = manual.preparar_gasto("500000", "OBRA SOCIAL DEMO", DIA)
+    assert [a.codigo for a in manual.evaluar_gasto(motor, fila)] == ["lejos_de_lo_previsto"]
+    otra = manual.preparar_gasto("500000", "Mueble Demo", DIA)
+    assert [a.codigo for a in manual.evaluar_gasto(motor, otra)] == ["grande_sin_anticipar"]
+    assert manuales(motor) == []  # Evaluar no guarda.
+
+
+def test_un_gasto_normal_no_tiene_avisos(tmp_path):
+    motor = demo(tmp_path)
+    assert manual.evaluar_gasto(motor, manual.preparar_gasto("3500", "Café Demo", DIA)) == []
