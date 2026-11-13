@@ -1,4 +1,4 @@
-"""Comandos: python -m conciliador importar [carpeta] | revisar | migrar | gasto | pago | manuales | borrar | reporte"""
+"""Comandos: python -m conciliador importar [carpeta] | revisar | migrar | gasto | pago | manuales | borrar | reporte | web"""
 import argparse
 import os
 from datetime import date
@@ -43,12 +43,21 @@ def main() -> None:
     borrar.add_argument("id", type=int, help="el número que muestra `manuales`")
     del_mes = comandos.add_parser("reporte", help="el reporte del mes")
     del_mes.add_argument("mes", help="por ejemplo 2026-11")
+    comandos.add_parser("web", help="levanta la app web en http://127.0.0.1:8000")
     argumentos = parser.parse_args()
 
     ruta = Path(os.environ.get("CONCILIADOR_DB", "conciliador.db"))
     if argumentos.comando == "migrar":
         respaldo = base.migrar(ruta)
         print(f"Base actualizada. Respaldo: {respaldo}" if respaldo else "La base ya estaba al día.")
+        return
+    if argumentos.comando == "web":
+        from conciliador import api  # Solo acá: el resto de los comandos no necesita FastAPI.
+
+        try:
+            api.servir(ruta)
+        except base.BaseDesactualizada as error:
+            raise SystemExit(str(error))
         return
     try:
         motor = base.conectar(ruta)
