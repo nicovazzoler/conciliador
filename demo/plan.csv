@@ -1,0 +1,5 @@
+tipo;concepto;texto;monto;moneda;dia;cuotas;primer_mes
+fijo;Internet;Internet Demo Hogar;20000,00;ARS;4;;
+fijo;Obra social;OBRA SOCIAL DEMO;13000,00;ARS;6;;
+cuota;Zapatillas;ZAPATERIA DEMO;20000,00;ARS;;6;2026-09
+cuota;Heladera;HELADERA DEMO;15000,00;ARS;;3;2026-11
