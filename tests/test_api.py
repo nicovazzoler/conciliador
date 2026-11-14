@@ -1,5 +1,6 @@
 import json
 from dataclasses import asdict
+from datetime import date
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -7,6 +8,7 @@ from sqlalchemy import select
 
 from conciliador import api, base, reporte
 from conciliador.importar import importar_carpeta
+from conciliador.lectores import FilaLeida
 
 DEMO = Path(__file__).parent.parent / "demo"
 
@@ -97,3 +99,67 @@ def test_no_se_puede_borrar_un_movimiento_de_un_pdf_por_la_api(tmp_path):
     with base.Session(base.conectar(ruta)) as sesion:
         de_un_pdf = sesion.scalar(select(base.Movimiento.id).limit(1))
     assert cliente.delete(f"/api/manuales/{de_un_pdf}").status_code == 404
+
+
+
+def test_resolver_un_pendiente_con_categoria_y_regla(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    pendientes = cliente.get("/api/pendientes").json()
+    super_demo = next(p for p in pendientes if p["descripcion"] == "Pago Supermercado Demo")
+    assert super_demo["sugerido"] == "Supermercado Demo"
+
+    respuesta = cliente.post(
+        f"/api/pendientes/{super_demo['id']}", json={"categoria": "Super", "regla": "Supermercado Demo"}
+    )
+    assert respuesta.status_code == 204
+    assert super_demo["id"] not in [p["id"] for p in cliente.get("/api/pendientes").json()]
+    assert cliente.post(f"/api/pendientes/{super_demo['id']}", json={"categoria": "Super"}).status_code == 404
+
+
+def test_marcar_un_pendiente_como_cambio(tmp_path):
+    cliente, ruta = cliente_con_demo(tmp_path)
+    (primero, *_) = cliente.get("/api/pendientes").json()
+    assert cliente.post(f"/api/pendientes/{primero['id']}", json={"cambio": True}).status_code == 204
+    with base.Session(base.conectar(ruta)) as sesion:
+        assert sesion.get(base.Movimiento, primero["id"]).tipo == "cambio"
+
+
+def test_varios_agrupa_por_texto_y_ordena_por_monto(tmp_path):
+    cliente, ruta = cliente_con_demo(tmp_path)
+    filas = [
+        FilaLeida(f"9{n}", date(2026, 10, n), "Pago con QR Panaderia Demo", -150_000, tipo="consumo")
+        for n in (1, 2, 3)
+    ]
+    motor = base.conectar(ruta)
+    base.guardar_movimientos(motor, "mercado_pago", filas)
+    base.aplicar_reglas(motor)
+
+    grupos = cliente.get("/api/varios").json()
+    # Las 3 nuevas y la "Panadería Demo" de la demo: se agrupa sin tildes, como compara una regla.
+    (panaderia,) = [g for g in grupos if g["texto"].startswith("Panader")]
+    assert panaderia["movimientos"] == 4
+    assert panaderia["total_centavos"] > 450_000
+    totales = [g["total_centavos"] for g in grupos]
+    assert totales == sorted(totales, reverse=True)
+
+
+def test_una_regla_nueva_categoriza_el_grupo_y_dice_cuantos(tmp_path):
+    cliente, ruta = cliente_con_demo(tmp_path)
+    filas = [
+        FilaLeida(f"9{n}", date(2026, 10, n), "Pago con QR Panaderia Demo", -150_000, tipo="consumo")
+        for n in (1, 2)
+    ]
+    base.guardar_movimientos(base.conectar(ruta), "mercado_pago", filas)
+    respuesta = cliente.post("/api/reglas", json={"texto": "Panaderia Demo", "categoria": "Comida"})
+    # Las 2 nuevas más la "Panadería Demo" que ya trae la demo: la regla no distingue tildes.
+    assert (respuesta.status_code, respuesta.json()) == (201, {"categorizados": 3})
+    assert "Panaderia Demo" not in [g["texto"] for g in cliente.get("/api/varios").json()]
+
+
+def test_una_regla_repetida_da_409_y_una_muy_corta_422(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    assert cliente.post("/api/reglas", json={"texto": "Kiosco Demo", "categoria": "Kiosco"}).status_code == 201
+    repetida = cliente.post("/api/reglas", json={"texto": "Kiosco Demo", "categoria": "Otra"})
+    assert repetida.status_code == 409
+    assert "Kiosco" in repetida.json()["detail"]
+    assert cliente.post("/api/reglas", json={"texto": "Pa", "categoria": "Comida"}).status_code == 422

@@ -11,7 +11,7 @@ from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import (
-    Date, String, UniqueConstraint, create_engine, delete, func, inspect, select, text,
+    Date, String, UniqueConstraint, create_engine, delete, func, inspect, or_, select, text,
 )
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.engine import Engine
@@ -277,6 +277,63 @@ def pendientes(motor: Engine) -> list[Pendiente]:
         return [
             Pendiente(f.id, f.fecha, f.descripcion, f.monto_centavos, f.moneda) for f in filas
         ]
+
+
+class ReglaRepetida(Exception):
+    """Ya hay una regla con ese texto. Guardarla de nuevo no haría nada."""
+
+    def __init__(self, categoria: str):
+        super().__init__(f"ya hay una regla con ese texto, para la categoría {categoria!r}")
+        self.categoria = categoria
+
+
+def gastos_varios(motor: Engine) -> list[dict]:
+    """Gastos sin categoría real y sin categoría puesta a mano: lo que una regla podría categorizar."""
+    with Session(motor) as sesion:
+        filas = sesion.scalars(
+            select(Movimiento).where(
+                Movimiento.tipo.in_(clasificar.TIPOS_DE_GASTO),
+                Movimiento.categoria_manual.is_(False),
+                Movimiento.categoria == clasificar.SIN_REGLA,
+            )
+        )
+        return [
+            {
+                "id": f.id,
+                "descripcion": f.descripcion,
+                "monto_centavos": f.monto_centavos,
+                "moneda": f.moneda,
+                "plan_concepto": f.plan_concepto,
+            }
+            for f in filas
+        ]
+
+
+def agregar_regla(motor: Engine, texto: str, categoria: str) -> int:
+    """Guarda la regla, la aplica y devuelve cuántos movimientos sin categoría real categorizó."""
+    sin_categoria = (
+        Movimiento.tipo.in_(clasificar.TIPOS_DE_GASTO),
+        Movimiento.categoria_manual.is_(False),
+        or_(Movimiento.categoria.is_(None), Movimiento.categoria == clasificar.SIN_REGLA),
+    )
+    with Session(motor) as sesion, sesion.begin():
+        existente = sesion.scalar(select(Regla).where(Regla.tipo == "texto", Regla.valor == texto))
+        if existente is not None:
+            raise ReglaRepetida(existente.categoria)
+        sesion.add(Regla(tipo="texto", valor=texto, categoria=categoria))
+        candidatos = list(sesion.scalars(select(Movimiento.id).where(*sin_categoria)))
+    aplicar_reglas(motor)
+    # Se cuenta movimiento por movimiento: restar totales mezclaría otros cambios de aplicar_reglas.
+    with Session(motor) as sesion:
+        return sesion.scalar(
+            select(func.count()).where(Movimiento.id.in_(candidatos), Movimiento.categoria == categoria)
+        )
+
+
+def es_pendiente(motor: Engine, movimiento_id: int) -> bool:
+    with Session(motor) as sesion:
+        movimiento = sesion.get(Movimiento, movimiento_id)
+        return movimiento is not None and movimiento.pendiente
 
 
 def resolver_pendiente(
