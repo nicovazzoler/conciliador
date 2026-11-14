@@ -73,3 +73,54 @@ class Reporte(BaseModel):
     resumenes: list[Resumen]
     pendientes: int
     importado: Importado
+
+
+# Lo que recibe la API.
+
+
+class GastoNuevo(BaseModel):
+    monto: str  # Texto, como "9.832,83": un número viajaría como float.
+    descripcion: str
+    fecha: date | None = None  # Sin fecha: hoy.
+    moneda: Literal["ARS", "USD"] = "ARS"
+    medio: Literal["efectivo", "debito", "transferencia"] = "efectivo"
+    confirmado: bool = False  # La página lo manda después de mostrar los avisos.
+    categoria: str | None = None
+
+
+class PagoNuevo(BaseModel):
+    tarjeta: Literal["tarjeta_comafi", "tarjeta_nacion"]
+    monto: str
+    fecha: date | None = None
+    moneda: Literal["ARS", "USD"] = "ARS"
+
+
+# Lo que devuelve.
+
+
+class Aviso(BaseModel):
+    codigo: Literal["igual_al_anterior", "lejos_de_lo_previsto", "grande_sin_anticipar"]
+    mensaje: str
+
+
+class Avisos(BaseModel):
+    avisos: list[Aviso]
+
+
+class Guardado(BaseModel):
+    id: int
+    categoria: str | None = None
+    plan_concepto: str | None = None
+
+
+class Manual(BaseModel):
+    id: int
+    fecha: date
+    descripcion: str
+    monto_centavos: int
+    moneda: str
+    tipo: str
+    medio: str | None
+    tarjeta: str | None
+    categoria: str | None
+    plan_concepto: str | None
