@@ -7,10 +7,10 @@ name = "conciliador"
 version = "0.1.0"
 description = "Cruza gastos reales contra lo planificado."
 requires-python = ">=3.12"
-dependencies = ["sqlalchemy>=2.0", "pdfplumber>=0.11", "alembic>=1.13"]
+dependencies = ["sqlalchemy>=2.0", "pdfplumber>=0.11", "alembic>=1.13", "fastapi>=0.115", "uvicorn>=0.30"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "reportlab>=4"]
+dev = ["pytest>=8", "reportlab>=4", "httpx>=0.27"]
 
 [tool.setuptools]
 packages = ["conciliador", "conciliador.lectores"]
