@@ -315,8 +315,8 @@ def guardar_manual(
     medio: str | None = None,
     tarjeta: str | None = None,
     categoria: str | None = None,
-) -> tuple[str | None, str | None]:
-    """Guarda lo cargado a mano y lo procesa como una importación. Devuelve (categoría, plan)."""
+) -> tuple[int, str | None, str | None]:
+    """Guarda lo cargado a mano y lo procesa como una importación. Devuelve (id, categoría, plan)."""
     with Session(motor) as sesion, sesion.begin():
         movimiento = Movimiento(
             fuente=FUENTE_MANUAL,
@@ -341,7 +341,7 @@ def guardar_manual(
     aplicar_reglas(motor)
     with Session(motor) as sesion:
         guardado = sesion.get_one(Movimiento, movimiento_id)
-        return guardado.categoria, guardado.plan_concepto
+        return guardado.id, guardado.categoria, guardado.plan_concepto
 
 
 def ultimo_manual(motor: Engine) -> tuple[date, int, str] | None:

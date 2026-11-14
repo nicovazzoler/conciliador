@@ -84,8 +84,8 @@ def evaluar_gasto(motor: base.Engine, fila: FilaLeida) -> list[Aviso]:
 
 def guardar_gasto(
     motor: base.Engine, fila: FilaLeida, medio: str, categoria: str | None = None
-) -> tuple[str | None, str | None]:
-    """Guarda sin preguntar. Devuelve (categoría, concepto del plan)."""
+) -> tuple[int, str | None, str | None]:
+    """Guarda sin preguntar. Devuelve (id, categoría, concepto del plan)."""
     return base.guardar_manual(motor, fila, medio=medio, categoria=categoria)
 
 
@@ -111,7 +111,7 @@ def registrar_gasto(
     if any(a.codigo == "grande_sin_anticipar" for a in avisos):
         categoria = preguntar("Categoría (Enter para dejarlo en revisar): ").strip() or None
 
-    categoria, del_plan = guardar_gasto(motor, fila, medio, categoria)
+    _, categoria, del_plan = guardar_gasto(motor, fila, medio, categoria)
     detalle = f"fijo o cuota: {del_plan}" if del_plan else (categoria or "para revisar")
     mostrar(
         f"Guardado: {fecha:%d/%m/%Y}  {moneda} {importe(fila.monto_centavos)}  {fila.descripcion}  ({detalle})"
@@ -127,12 +127,20 @@ def registrar_pago(
     moneda: str = "ARS",
     mostrar: Callable[[str], None] = print,
 ) -> None:
+    """La versión de la terminal de guardar_pago."""
+    guardar_pago(motor, tarjeta, monto, fecha, moneda)
+    mostrar(f"Guardado: pago de {tarjeta} por {moneda} {importe(-leer_monto(monto))}. No suma como gasto.")
+
+
+def guardar_pago(motor: base.Engine, tarjeta: str, monto: str, fecha: date, moneda: str = "ARS") -> int:
     """El aviso de que pagaste un resumen. Sale plata del banco, pero no es un gasto nuevo."""
     if tarjeta not in TARJETAS:
         raise ValueError(f"tarjeta inválida: {tarjeta!r}. Opciones: {', '.join(TARJETAS)}")
+    if moneda not in ("ARS", "USD"):
+        raise ValueError(f"moneda inválida: {moneda!r}")
     fila = FilaLeida(uuid4().hex, fecha, f"Pago {tarjeta}", -leer_monto(monto), moneda, tipo="pago_tarjeta")
-    base.guardar_manual(motor, fila, tarjeta=tarjeta)
-    mostrar(f"Guardado: pago de {tarjeta} por {moneda} {importe(fila.monto_centavos)}. No suma como gasto.")
+    movimiento_id, _, _ = base.guardar_manual(motor, fila, tarjeta=tarjeta)
+    return movimiento_id
 
 
 def describir(movimiento: dict) -> str:
