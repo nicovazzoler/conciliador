@@ -17,3 +17,8 @@ entrada/
 __pycache__/
 *.egg-info/
 .pytest_cache/
+
+# Front: dependencias, página armada y esquema intermedio
+web/node_modules/
+web/dist/
+web/openapi.json

@@ -227,3 +227,19 @@ def test_el_nombre_seguro():
     assert api.nombre_seguro("otro.csv") is None
     assert api.nombre_seguro(".bashrc.pdf") is None
     assert api.nombre_seguro("") is None
+
+
+def test_la_app_sirve_la_pagina_armada_sin_tapar_la_api(tmp_path, monkeypatch):
+    pagina = tmp_path / "dist"
+    pagina.mkdir()
+    (pagina / "index.html").write_text("<h1>Conciliador</h1>", encoding="utf-8")
+    monkeypatch.setattr(api, "PAGINA", pagina)
+    cliente = TestClient(api.crear_app(tmp_path / "p.db"))
+    assert "Conciliador" in cliente.get("/").text
+    assert cliente.get("/api/reporte/2026-10").status_code == 200
+
+
+def test_el_esquema_tiene_todos_los_endpoints():
+    """De acá salen los tipos de TypeScript: si falta un endpoint, el front no lo puede usar."""
+    rutas = set(api.esquema_openapi()["paths"])
+    assert {"/api/reporte/{mes}", "/api/gastos", "/api/importar", "/api/varios", "/api/reglas"} <= rutas
