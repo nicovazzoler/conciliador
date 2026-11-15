@@ -1,41 +1,50 @@
-// Las pantallas y la barra de abajo. Cada pantalla tiene su dirección (#/cargar), así funciona
-// el botón "atrás" del navegador. Para pocas pantallas no hace falta una librería de rutas.
+// Las pantallas y la navegación. Cada pantalla tiene su dirección (#/gastos), así funciona el
+// botón "atrás" del navegador. Para pocas pantallas no hace falta una librería de rutas.
 import { useEffect, useState } from "react";
 import { Cargar } from "./Cargar";
-import { Mes } from "./Mes";
+import { Gastos } from "./Gastos";
+import { Navegacion, SECCIONES, type Ruta } from "./Navegacion";
 
-const PANTALLAS = {
-  mes: { titulo: "Mes", componente: Mes },
-  cargar: { titulo: "Cargar", componente: Cargar },
-} as const;
-
-type Pantalla = keyof typeof PANTALLAS;
-
-function pantallaDe(hash: string): Pantalla {
+function rutaDe(hash: string): Ruta {
   const nombre = hash.replace(/^#\/?/, "");
-  return nombre in PANTALLAS ? (nombre as Pantalla) : "mes";
+  if (nombre === "mes") return "gastos"; // La dirección vieja sigue funcionando.
+  return SECCIONES.some((s) => s.ruta === nombre) ? (nombre as Ruta) : "gastos";
 }
 
 export function App() {
-  const [pantalla, setPantalla] = useState(pantallaDe(window.location.hash));
+  const [ruta, setRuta] = useState(rutaDe(window.location.hash));
 
   useEffect(() => {
-    const alCambiar = () => setPantalla(pantallaDe(window.location.hash));
+    const alCambiar = () => setRuta(rutaDe(window.location.hash));
     window.addEventListener("hashchange", alCambiar);
     return () => window.removeEventListener("hashchange", alCambiar);
   }, []);
 
-  const Actual = PANTALLAS[pantalla].componente;
   return (
-    <>
-      <Actual />
-      <nav className="barra-abajo">
-        {(Object.keys(PANTALLAS) as Pantalla[]).map((nombre) => (
-          <a key={nombre} href={`#/${nombre}`} aria-current={nombre === pantalla ? "page" : undefined}>
-            {PANTALLAS[nombre].titulo}
-          </a>
-        ))}
-      </nav>
-    </>
+    <div className="app">
+      <header className="barra">
+        <a className="marca" href="#/gastos">
+          Conciliador
+        </a>
+        <Navegacion actual={ruta} />
+      </header>
+      {ruta === "gastos" && <Gastos />}
+      {ruta === "cargar" && <Cargar />}
+      {ruta === "revisar" && <EnConstruccion titulo="Revisar" detalle="Los pendientes y Gastos varios por grupo." />}
+      {ruta === "importar" && <EnConstruccion titulo="Importar" detalle="Soltar los PDF y ver qué entró." />}
+      {ruta === "inversiones" && <EnConstruccion titulo="Inversiones" detalle="Portafolio y Trading." />}
+    </div>
+  );
+}
+
+function EnConstruccion({ titulo, detalle }: { titulo: string; detalle: string }) {
+  return (
+    <main className="pagina">
+      <h1 className="titulo-pagina">{titulo}</h1>
+      <p className="vacio">
+        {detalle} Esta pantalla llega en el próximo paso; mientras tanto, la API ya la tiene y se puede usar desde la
+        terminal.
+      </p>
+    </main>
   );
 }

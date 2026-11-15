@@ -46,6 +46,25 @@ def armar(motor: base.Engine, mes: str) -> Reporte:
     )
 
 
+def meses_hasta(mes: str, cantidad: int) -> list[str]:
+    """Los `cantidad` meses que terminan en `mes`, del más viejo al más nuevo: cruza el cambio de año."""
+    anio, numero = map(int, mes.split("-"))
+    total = anio * 12 + numero - 1
+    return [f"{(total - i) // 12}-{(total - i) % 12 + 1:02d}" for i in reversed(range(cantidad))]
+
+
+def historial(motor: base.Engine, mes: str, cantidad: int = 6) -> list[dict]:
+    """Lo gastado en cada uno de los últimos meses. Un mes sin movimientos aparece en cero, no falta."""
+    if not MES.match(mes):
+        raise ValueError(f"mes inválido: {mes!r}. Usá AAAA-MM, por ejemplo 2026-11")
+    if not 1 <= cantidad <= 24:
+        raise ValueError("se pueden pedir entre 1 y 24 meses")
+    meses = meses_hasta(mes, cantidad)
+    filas = {f["mes"]: f for f in base.consultar(motor, "historial", desde=meses[0], hasta=meses[-1])}
+    vacio = {"pesos_centavos": 0, "dolares_centavos": 0, "total_usd_centavos": 0}
+    return [{"mes": m, **{k: filas.get(m, vacio)[k] for k in vacio}} for m in meses]
+
+
 def texto(reporte: Reporte) -> str:
     """Solo presentación: no consulta nada. Lo que está bien no se muestra, para no tapar lo que no."""
     anio, mes = reporte.mes.split("-")

@@ -243,3 +243,11 @@ def test_el_esquema_tiene_todos_los_endpoints():
     """De acá salen los tipos de TypeScript: si falta un endpoint, el front no lo puede usar."""
     rutas = set(api.esquema_openapi()["paths"])
     assert {"/api/reporte/{mes}", "/api/gastos", "/api/importar", "/api/varios", "/api/reglas"} <= rutas
+
+
+def test_historial_por_la_api(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    respuesta = cliente.get("/api/historial/2026-11", params={"meses": 6})
+    assert respuesta.status_code == 200
+    assert len(respuesta.json()) == 6
+    assert cliente.get("/api/historial/2026-11", params={"meses": 99}).status_code == 422

@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/historial/{mes}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ver Historial */
+        get: operations["ver_historial_api_historial__mes__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/gastos": {
         parameters: {
             query?: never;
@@ -377,6 +394,17 @@ export interface components {
             /** Plan Concepto */
             plan_concepto: string | null;
         };
+        /** MesHistorial */
+        MesHistorial: {
+            /** Mes */
+            mes: string;
+            /** Pesos Centavos */
+            pesos_centavos: number;
+            /** Dolares Centavos */
+            dolares_centavos: number;
+            /** Total Usd Centavos */
+            total_usd_centavos: number;
+        };
         /** PagoNuevo */
         PagoNuevo: {
             /**
@@ -542,6 +570,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Reporte"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ver_historial_api_historial__mes__get: {
+        parameters: {
+            query?: {
+                meses?: number;
+            };
+            header?: never;
+            path: {
+                mes: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesHistorial"][];
                 };
             };
             /** @description Validation Error */

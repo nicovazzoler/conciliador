@@ -48,6 +48,12 @@ function enviar(ruta: string, metodo: string, datos?: unknown): Promise<Response
   });
 }
 
+export type MesHistorial = Esquemas["MesHistorial"];
+
+export async function traerHistorial(mes: string, meses = 6, opciones?: RequestInit): Promise<MesHistorial[]> {
+  return leer<MesHistorial[]>(await fetch(`/api/historial/${encodeURIComponent(mes)}?meses=${meses}`, opciones));
+}
+
 export async function traerReporte(mes: string, opciones?: RequestInit): Promise<Reporte> {
   return leer<Reporte>(await fetch(`/api/reporte/${encodeURIComponent(mes)}`, opciones));
 }

@@ -241,3 +241,17 @@ def test_con_un_resumen_que_vence_en_el_mes_la_cuota_falta(tmp_path):
     assert cuotas(motor, "2026-12")["Tele"]["estado"] == "sin datos"
     resumen(motor, "tarjeta_comafi", date(2026, 11, 26), date(2026, 12, 9), 0)
     assert cuotas(motor, "2026-12")["Tele"]["estado"] == "falta"
+
+
+def test_meses_hasta_cruza_el_anio():
+    assert reporte.meses_hasta("2027-02", 4) == ["2026-11", "2026-12", "2027-01", "2027-02"]
+
+
+def test_historial_trae_los_meses_pedidos_aunque_esten_vacios(tmp_path):
+    motor = demo(tmp_path)
+    meses = reporte.historial(motor, "2026-11", 3)
+    assert [m["mes"] for m in meses] == ["2026-09", "2026-10", "2026-11"]
+    septiembre, octubre, _ = meses
+    assert septiembre["pesos_centavos"] == 0  # Sin movimientos: aparece en cero, no falta.
+    (totales,) = base.consultar(motor, "totales", mes="2026-10")
+    assert octubre["pesos_centavos"] == totales["pesos_centavos"]  # El mismo número que el reporte.

@@ -63,6 +63,13 @@ class Importado(BaseModel):
     resumenes: str | None
 
 
+class MesHistorial(BaseModel):
+    mes: str
+    pesos_centavos: int
+    dolares_centavos: int
+    total_usd_centavos: int
+
+
 class Reporte(BaseModel):
     mes: str
     totales: Totales

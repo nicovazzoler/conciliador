@@ -44,9 +44,7 @@ export function Cargar() {
 
   return (
     <main className="pagina">
-      <header className="encabezado">
-        <h1>Cargar</h1>
-      </header>
+      <h1 className="titulo-pagina">Cargar</h1>
 
       <div className="pestanias" role="tablist">
         {(["gasto", "pago"] as const).map((opcion) => (
