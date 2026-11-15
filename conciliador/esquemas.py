@@ -188,3 +188,51 @@ class Importacion(BaseModel):
     aviso_cotizaciones: str | None
     pendientes: int
     sin_usd: int
+
+
+# Plan.
+
+
+class FijoEntrada(BaseModel):
+    concepto: str
+    texto: str  # Lo que se busca en la descripción de los movimientos.
+    monto: str  # Texto, como en Cargar: nunca float.
+    moneda: Literal["ARS", "USD"] = "ARS"
+    dia: int | None = None
+    categoria: str | None = None
+
+
+class CuotaEntrada(BaseModel):
+    concepto: str
+    texto: str
+    monto: str
+    moneda: Literal["ARS", "USD"] = "ARS"
+    cantidad: int
+    primer_mes: str  # AAAA-MM
+    categoria: str | None = None
+
+
+class FijoPlan(BaseModel):
+    id: int
+    concepto: str
+    texto: str
+    monto_centavos: int
+    moneda: str
+    dia: int | None
+    categoria: str | None
+
+
+class CuotaPlan(BaseModel):
+    id: int
+    concepto: str
+    texto: str
+    monto_centavos: int
+    moneda: str
+    cantidad: int
+    primer_mes: str
+    categoria: str | None
+
+
+class Plan(BaseModel):
+    fijos: list[FijoPlan]
+    cuotas: list[CuotaPlan]

@@ -4,10 +4,11 @@ import tempfile
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
+from typing import Literal
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Response, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from conciliador import base, cotizaciones, esquemas, importar, manual, plan, reporte, revisar
@@ -108,6 +109,60 @@ def crear_app(
         if regla is not None and len(regla) < MINIMO_REGLA:
             raise HTTPException(status_code=422, detail=f"la regla necesita al menos {MINIMO_REGLA} letras")
         base.resolver_pendiente(motor, movimiento_id, categoria, regla)
+        return Response(status_code=204)
+
+    @app.get("/api/plan", response_model=esquemas.Plan)
+    def ver_plan():
+        return base.plan_con_ids(motor)
+
+    @app.get("/api/plan.csv", response_class=PlainTextResponse)
+    def exportar_plan():
+        leido = base.leer_plan(motor)
+        return PlainTextResponse(
+            plan.a_csv(leido.fijos, leido.cuotas),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="plan.csv"'},
+        )
+
+    def _guardar(tabla: str, item_id: int | None, construir):
+        try:
+            item = construir()
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+        try:
+            guardado = base.guardar_del_plan(motor, tabla, item, item_id)
+        except base.ConceptoRepetido as error:
+            raise HTTPException(status_code=409, detail=str(error))
+        if guardado is None:
+            raise HTTPException(status_code=404, detail="no existe en el plan")
+        return {"id": guardado}
+
+    def _fijo(e: esquemas.FijoEntrada):
+        return lambda: plan.fijo_desde(e.concepto, e.texto, e.monto, e.moneda, e.dia, e.categoria)
+
+    def _cuota(e: esquemas.CuotaEntrada):
+        return lambda: plan.cuota_desde(e.concepto, e.texto, e.monto, e.moneda, e.cantidad, e.primer_mes, e.categoria)
+
+    @app.post("/api/plan/fijos", status_code=201, response_model=esquemas.Guardado)
+    def crear_fijo(entrada: esquemas.FijoEntrada):
+        return _guardar("fijos", None, _fijo(entrada))
+
+    @app.put("/api/plan/fijos/{item_id}", response_model=esquemas.Guardado)
+    def editar_fijo(item_id: int, entrada: esquemas.FijoEntrada):
+        return _guardar("fijos", item_id, _fijo(entrada))
+
+    @app.post("/api/plan/cuotas", status_code=201, response_model=esquemas.Guardado)
+    def crear_cuota(entrada: esquemas.CuotaEntrada):
+        return _guardar("cuotas", None, _cuota(entrada))
+
+    @app.put("/api/plan/cuotas/{item_id}", response_model=esquemas.Guardado)
+    def editar_cuota(item_id: int, entrada: esquemas.CuotaEntrada):
+        return _guardar("cuotas", item_id, _cuota(entrada))
+
+    @app.delete("/api/plan/{tabla}/{item_id}", status_code=204)
+    def borrar_del_plan(tabla: Literal["fijos", "cuotas"], item_id: int):
+        if not base.borrar_del_plan(motor, tabla, item_id):
+            raise HTTPException(status_code=404, detail="no existe en el plan")
         return Response(status_code=204)
 
     @app.get("/api/categorias", response_model=list[str])

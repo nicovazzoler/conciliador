@@ -11,7 +11,7 @@ from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import (
-    Date, String, UniqueConstraint, create_engine, delete, func, inspect, or_, select, text,
+    Date, String, UniqueConstraint, create_engine, delete, func, inspect, or_, select, text, update,
 )
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.engine import Engine
@@ -227,9 +227,99 @@ def guardar_resumen(motor: Engine, resumen: ResumenTarjeta) -> None:
         sesion.execute(orden)
 
 
-def reemplazar_plan(motor: Engine, plan: PlanLeido) -> None:
-    """El plan es el archivo: cada importación reemplaza lo anterior."""
+class ConceptoRepetido(Exception):
+    """El concepto identifica al fijo o cuota: no puede haber dos iguales en el plan."""
+
+
+def hay_plan(motor: Engine) -> bool:
+    with Session(motor) as sesion:
+        return sesion.scalar(select(func.count()).select_from(Fijo)) + sesion.scalar(
+            select(func.count()).select_from(Cuota)
+        ) > 0
+
+
+def leer_plan(motor: Engine) -> PlanLeido:
+    """El plan guardado, como si se hubiera leído de plan.csv."""
+    from conciliador.plan import CuotaPlan, FijoPlan
+
+    with Session(motor) as sesion:
+        fijos = [FijoPlan(f.concepto, f.texto, f.monto_centavos, f.moneda, f.dia, f.categoria)
+                 for f in sesion.scalars(select(Fijo).order_by(Fijo.concepto))]
+        cuotas = [CuotaPlan(c.concepto, c.texto, c.monto_centavos, c.moneda, c.cantidad, c.primer_mes, c.categoria)
+                  for c in sesion.scalars(select(Cuota).order_by(Cuota.primer_mes, Cuota.concepto))]
+    return PlanLeido(fijos=fijos, cuotas=cuotas)
+
+
+def plan_con_ids(motor: Engine) -> dict:
+    """Los fijos y las cuotas con su id, para editarlos desde la app."""
+    with Session(motor) as sesion:
+        fijos = [{"id": f.id, "concepto": f.concepto, "texto": f.texto, "monto_centavos": f.monto_centavos,
+                  "moneda": f.moneda, "dia": f.dia, "categoria": f.categoria}
+                 for f in sesion.scalars(select(Fijo).order_by(Fijo.concepto))]
+        cuotas = [{"id": c.id, "concepto": c.concepto, "texto": c.texto, "monto_centavos": c.monto_centavos,
+                   "moneda": c.moneda, "cantidad": c.cantidad, "primer_mes": c.primer_mes, "categoria": c.categoria}
+                  for c in sesion.scalars(select(Cuota).order_by(Cuota.primer_mes, Cuota.concepto))]
+    return {"fijos": fijos, "cuotas": cuotas}
+
+
+def guardar_del_plan(motor: Engine, tabla: str, item, item_id: int | None = None) -> int | None:
+    """Crea (sin id) o modifica (con id) un fijo o una cuota. Devuelve el id, o None si no existe."""
+    modelo = Fijo if tabla == "fijos" else Cuota
     with Session(motor) as sesion, sesion.begin():
+        repetido = [
+            *sesion.scalars(select(Fijo.id).where(Fijo.concepto == item.concepto)),
+            *sesion.scalars(select(Cuota.id).where(Cuota.concepto == item.concepto)),
+        ]
+        propio = item_id is not None and sesion.get(modelo, item_id) is not None
+        if repetido and not (propio and repetido == [item_id] and sesion.get(modelo, item_id).concepto == item.concepto):
+            raise ConceptoRepetido(f"ya hay algo en el plan que se llama {item.concepto!r}")
+        if item_id is None:
+            fila = modelo()
+            sesion.add(fila)
+            anterior = None
+        else:
+            fila = sesion.get(modelo, item_id)
+            if fila is None:
+                return None
+            anterior = fila.concepto
+        for campo, valor in vars(item).items():
+            setattr(fila, "cantidad" if campo == "cantidad" else campo, valor)
+        sesion.flush()
+        nuevo_id = fila.id
+        _soltar_categoria_del_plan(sesion, {anterior, item.concepto})
+    aplicar_reglas(motor)
+    return nuevo_id
+
+
+def borrar_del_plan(motor: Engine, tabla: str, item_id: int) -> bool:
+    modelo = Fijo if tabla == "fijos" else Cuota
+    with Session(motor) as sesion, sesion.begin():
+        fila = sesion.get(modelo, item_id)
+        if fila is None:
+            return False
+        _soltar_categoria_del_plan(sesion, {fila.concepto})
+        sesion.delete(fila)
+    aplicar_reglas(motor)
+    return True
+
+
+def _soltar_categoria_del_plan(sesion: Session, conceptos: set) -> None:
+    """Lo que tomó la categoría de un fijo o cuota que cambió se vuelve a calcular desde cero.
+
+    Sin esto, si se borra la categoría del plan, los gastos se quedarían con la vieja.
+    """
+    sesion.execute(
+        update(Movimiento)
+        .where(Movimiento.plan_concepto.in_([c for c in conceptos if c]), Movimiento.categoria_manual.is_(False))
+        .values(categoria=None, pendiente=False)
+    )
+
+
+def reemplazar_plan(motor: Engine, plan: PlanLeido) -> None:
+    """Reemplaza el plan entero, por ejemplo al subir un plan.csv."""
+    with Session(motor) as sesion, sesion.begin():
+        anteriores = {*sesion.scalars(select(Fijo.concepto)), *sesion.scalars(select(Cuota.concepto))}
+        _soltar_categoria_del_plan(sesion, anteriores)
         sesion.execute(delete(Fijo))
         sesion.execute(delete(Cuota))
         sesion.add_all(

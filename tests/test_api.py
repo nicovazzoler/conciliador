@@ -263,3 +263,73 @@ def test_categorias_en_uso_de_la_mas_usada_a_la_menos(tmp_path):
     assert "Gastos varios" not in categorias
     assert categorias[-1] == "Viajes"  # Una regla sin movimientos todavía también es una categoría elegida.
     assert set(categorias) == inicial | {"Transporte", "Kiosco", "Viajes"}
+
+
+
+FIJO = {"concepto": "Gimnasio", "texto": "GIMNASIO DEMO", "monto": "32.000", "dia": 5, "categoria": "Salud"}
+
+
+def test_crear_editar_y_borrar_un_fijo_desde_la_app(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    creado = cliente.post("/api/plan/fijos", json=FIJO)
+    assert creado.status_code == 201
+    fijo_id = creado.json()["id"]
+    plan_actual = cliente.get("/api/plan").json()
+    gimnasio = next(f for f in plan_actual["fijos"] if f["id"] == fijo_id)
+    assert (gimnasio["monto_centavos"], gimnasio["categoria"]) == (3_200_000, "Salud")
+
+    assert cliente.put(f"/api/plan/fijos/{fijo_id}", json={**FIJO, "monto": "35000"}).status_code == 200
+    assert next(f for f in cliente.get("/api/plan").json()["fijos"] if f["id"] == fijo_id)["monto_centavos"] == 3_500_000
+
+    assert cliente.delete(f"/api/plan/fijos/{fijo_id}").status_code == 204
+    assert cliente.delete(f"/api/plan/fijos/{fijo_id}").status_code == 404
+
+
+def test_el_concepto_no_se_puede_repetir_ni_entre_fijos_y_cuotas(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    repetido = cliente.post("/api/plan/fijos", json={**FIJO, "concepto": "Zapatillas"})  # Ya es una cuota de la demo.
+    assert repetido.status_code == 409
+
+
+def test_un_fijo_o_una_cuota_invalidos_dan_422(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    assert cliente.post("/api/plan/fijos", json={**FIJO, "monto": "0"}).status_code == 422
+    assert cliente.post("/api/plan/fijos", json={**FIJO, "dia": 40}).status_code == 422
+    cuota = {"concepto": "Tele", "texto": "TELE DEMO", "monto": "10000", "cantidad": 6, "primer_mes": "2026-13"}
+    assert cliente.post("/api/plan/cuotas", json=cuota).status_code == 422
+    assert cliente.post("/api/plan/cuotas", json={**cuota, "primer_mes": "2026-12"}).status_code == 201
+
+
+def test_cambiar_la_categoria_del_plan_recategoriza_lo_vinculado(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    internet = next(f for f in cliente.get("/api/plan").json()["fijos"] if f["concepto"] == "Internet")
+    cambio = {"concepto": "Internet", "texto": "Internet Demo Hogar", "monto": "20000", "dia": 4, "categoria": "Hogar"}
+    assert cliente.put(f"/api/plan/fijos/{internet['id']}", json=cambio).status_code == 200
+    categorias = {c["categoria"] for c in cliente.get("/api/reporte/2026-10").json()["categorias"]}
+    assert "Hogar" in categorias and "Servicios" not in categorias
+    sin_categoria = {**cambio, "categoria": None}
+    cliente.put(f"/api/plan/fijos/{internet['id']}", json=sin_categoria)
+    categorias = {c["categoria"] for c in cliente.get("/api/reporte/2026-10").json()["categorias"]}
+    assert "Hogar" not in categorias  # Sin categoría en el plan, vuelve a decidir la regla o Gastos varios.
+
+
+def test_el_plan_se_exporta_como_csv_y_se_vuelve_a_leer_igual(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    respuesta = cliente.get("/api/plan.csv")
+    assert respuesta.headers["content-type"].startswith("text/csv")
+    archivo = tmp_path / "plan.csv"
+    archivo.write_text(respuesta.text, encoding="utf-8")
+    from conciliador import plan
+
+    leido = plan.leer(archivo)
+    assert leido.errores == []
+    assert {f.concepto for f in leido.fijos} == {"Internet", "Obra social"}
+
+
+def test_importar_la_carpeta_no_pisa_un_plan_ya_cargado(tmp_path):
+    cliente, ruta = cliente_con_demo(tmp_path)
+    cliente.post("/api/plan/fijos", json=FIJO)
+    informes = importar_carpeta(DEMO, base.conectar(ruta))
+    (del_plan,) = [i for i in informes if i.archivo == "plan.csv"]
+    assert "se edita desde ahí" in del_plan.problemas[0]
+    assert "Gimnasio" in {f["concepto"] for f in cliente.get("/api/plan").json()["fijos"]}
