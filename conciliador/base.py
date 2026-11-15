@@ -94,6 +94,7 @@ class Fijo(Base):
     monto_centavos: Mapped[int]
     moneda: Mapped[str] = mapped_column(String(3))
     dia: Mapped[int | None]
+    categoria: Mapped[str | None] = mapped_column(String(60))
 
 
 class Cuota(Base):
@@ -106,6 +107,7 @@ class Cuota(Base):
     moneda: Mapped[str] = mapped_column(String(3))
     cantidad: Mapped[int]
     primer_mes: Mapped[str] = mapped_column(String(7))
+    categoria: Mapped[str | None] = mapped_column(String(60))
 
 
 @dataclass(frozen=True)
@@ -237,6 +239,7 @@ def reemplazar_plan(motor: Engine, plan: PlanLeido) -> None:
                 monto_centavos=f.monto_centavos,
                 moneda=f.moneda,
                 dia=f.dia,
+                categoria=f.categoria,
             )
             for f in plan.fijos
         )
@@ -248,13 +251,15 @@ def reemplazar_plan(motor: Engine, plan: PlanLeido) -> None:
                 moneda=c.moneda,
                 cantidad=c.cantidad,
                 primer_mes=c.primer_mes,
+                categoria=c.categoria,
             )
             for c in plan.cuotas
         )
 
 
 def aplicar_reglas(motor: Engine) -> None:
-    """Categoriza los gastos sin categoría real. Nunca pisa una categoría puesta a mano."""
+    """Categoriza los gastos. Gana la categoría puesta a mano, después la del fijo o cuota del plan
+    al que corresponde el gasto, y después las reglas."""
     with Session(motor) as sesion, sesion.begin():
         reglas = [(r.valor, r.categoria) for r in sesion.scalars(select(Regla))]
         fijos = sesion.scalars(select(Fijo)).all()
@@ -262,10 +267,16 @@ def aplicar_reglas(motor: Engine) -> None:
         gastos = sesion.scalars(
             select(Movimiento).where(Movimiento.tipo.in_(clasificar.TIPOS_DE_GASTO))
         ).all()
+        del_plan = {p.concepto: p.categoria for p in [*fijos, *cuotas] if p.categoria}
         for gasto in gastos:
             # Derivado del plan y del movimiento: se recalcula entero, porque el plan pudo cambiar.
             gasto.plan_concepto = clasificar.del_plan(gasto, fijos, cuotas)
-            if not gasto.categoria_manual and gasto.categoria in (None, clasificar.SIN_REGLA):
+            if gasto.categoria_manual:
+                continue
+            if gasto.plan_concepto in del_plan:
+                # Lo anotado en el plan es más específico que una regla de texto.
+                gasto.categoria, gasto.pendiente = del_plan[gasto.plan_concepto], False
+            elif gasto.categoria in (None, clasificar.SIN_REGLA):
                 gasto.categoria, gasto.pendiente = clasificar.decidir(gasto, reglas, fijos, cuotas)
 
 

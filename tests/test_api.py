@@ -255,10 +255,11 @@ def test_historial_por_la_api(tmp_path):
 
 def test_categorias_en_uso_de_la_mas_usada_a_la_menos(tmp_path):
     cliente, _ = cliente_con_demo(tmp_path)
-    assert cliente.get("/api/categorias").json() == []  # La demo arranca toda en Gastos varios.
+    inicial = set(cliente.get("/api/categorias").json())  # Las que vienen del plan de la demo.
+    assert {"Servicios", "Ropa"} <= inicial
     for texto, categoria in [("SUBE Viajes", "Transporte"), ("Kiosco Demo", "Kiosco"), ("Nada Que Coincida", "Viajes")]:
         assert cliente.post("/api/reglas", json={"texto": texto, "categoria": categoria}).status_code == 201
     categorias = cliente.get("/api/categorias").json()
     assert "Gastos varios" not in categorias
     assert categorias[-1] == "Viajes"  # Una regla sin movimientos todavía también es una categoría elegida.
-    assert set(categorias) == {"Transporte", "Kiosco", "Viajes"}
+    assert set(categorias) == inicial | {"Transporte", "Kiosco", "Viajes"}

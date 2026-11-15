@@ -6,6 +6,8 @@ from pathlib import Path
 
 ARCHIVO = "plan.csv"
 COLUMNAS = ("tipo", "concepto", "texto", "monto", "moneda", "dia", "cuotas", "primer_mes")
+# Opcional: un plan.csv sin esta columna sigue funcionando, y lo suyo queda sin categoría.
+CATEGORIA = "categoria"
 MES = re.compile(r"^\d{4}-\d{2}$")
 
 
@@ -16,6 +18,7 @@ class FijoPlan:
     monto_centavos: int
     moneda: str
     dia: int | None
+    categoria: str | None = None
 
 
 @dataclass(frozen=True)
@@ -26,6 +29,7 @@ class CuotaPlan:
     moneda: str
     cantidad: int
     primer_mes: str
+    categoria: str | None = None
 
 
 @dataclass
@@ -89,16 +93,17 @@ def _agregar(fila: dict, plan: PlanLeido) -> None:
     if moneda not in ("ARS", "USD"):
         raise ValueError(f"moneda inválida: {moneda!r}")
     monto = monto_a_centavos(fila["monto"])
+    categoria = (fila.get(CATEGORIA) or "").strip() or None
 
     if tipo == "fijo":
         dia = fila["dia"].strip()
-        plan.fijos.append(FijoPlan(concepto, texto, monto, moneda, int(dia) if dia else None))
+        plan.fijos.append(FijoPlan(concepto, texto, monto, moneda, int(dia) if dia else None, categoria))
     elif tipo == "cuota":
         primer_mes = fila["primer_mes"].strip()
         if not MES.match(primer_mes):
             raise ValueError(f"primer_mes inválido: {primer_mes!r}")
         plan.cuotas.append(
-            CuotaPlan(concepto, texto, monto, moneda, int(fila["cuotas"]), primer_mes)
+            CuotaPlan(concepto, texto, monto, moneda, int(fila["cuotas"]), primer_mes, categoria)
         )
     else:
         raise ValueError(f"tipo inválido: {tipo!r}")

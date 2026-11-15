@@ -258,3 +258,50 @@ def test_compara_desde_el_inicio_de_cada_palabra():
     assert clasificar.coincide("ONEILL", "O'NEILL TIENDA")
     assert clasificar.coincide("TIENDA", "PAGO *TiendaPremium")
     assert clasificar.coincide("Tienda Centro", "121-TIENDA CENTRO DEMO")
+
+
+def test_la_categoria_del_plan_categoriza_lo_que_se_vincula(tmp_path):
+    motor = base.conectar(tmp_path / "p.db")
+    gasto(motor, "1", "Telefonía Demo", 25_000)
+    fijos = [plan.FijoPlan("Celular", "Telefonía Demo", 2_500_000, "ARS", None, "Servicios")]
+    base.reemplazar_plan(motor, plan.PlanLeido(fijos=fijos))
+    base.aplicar_reglas(motor)
+    assert buscar(motor, "Telefonía Demo").categoria == "Servicios"
+
+
+def test_la_categoria_del_plan_gana_sobre_una_regla_pero_no_sobre_la_puesta_a_mano(tmp_path):
+    motor = base.conectar(tmp_path / "p.db")
+    gasto(motor, "1", "Telefonía Demo", 25_000)
+    gasto(motor, "2", "Telefonía Demo Bis", 24_000)
+    with base.Session(motor) as sesion, sesion.begin():
+        sesion.add(base.Regla(valor="Telefonía Demo", categoria="Varios del celu"))
+    base.aplicar_reglas(motor)
+    with base.Session(motor) as sesion, sesion.begin():
+        a_mano = sesion.scalar(select(base.Movimiento).where(base.Movimiento.numero_operacion == "2"))
+        a_mano.categoria, a_mano.categoria_manual = "Elegida a mano", True
+    fijos = [plan.FijoPlan("Celular", "Telefonía Demo", 2_500_000, "ARS", None, "Servicios")]
+    base.reemplazar_plan(motor, plan.PlanLeido(fijos=fijos))
+    base.aplicar_reglas(motor)
+    assert buscar(motor, "Telefonía Demo").categoria == "Servicios"
+    assert buscar(motor, "Telefonía Demo Bis").categoria == "Elegida a mano"
+
+
+def test_un_plan_sin_columna_categoria_sigue_funcionando(tmp_path):
+    archivo = tmp_path / "plan.csv"
+    archivo.write_text(
+        "tipo;concepto;texto;monto;moneda;dia;cuotas;primer_mes\nfijo;Luz;LUZ DEMO;100;ARS;;;\n", encoding="utf-8"
+    )
+    leido = plan.leer(archivo)
+    assert leido.errores == []
+    assert leido.fijos[0].categoria is None
+
+
+def test_el_plan_lee_la_categoria(tmp_path):
+    archivo = tmp_path / "plan.csv"
+    archivo.write_text(
+        "tipo;concepto;texto;monto;moneda;dia;cuotas;primer_mes;categoria\n"
+        "fijo;Luz;LUZ DEMO;100;ARS;;;;Servicios\ncuota;Tele;TELE DEMO;100;ARS;;3;2026-11;\n",
+        encoding="utf-8",
+    )
+    leido = plan.leer(archivo)
+    assert (leido.fijos[0].categoria, leido.cuotas[0].categoria) == ("Servicios", None)
