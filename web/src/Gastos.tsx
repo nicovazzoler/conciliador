@@ -79,6 +79,11 @@ function Contenido({
         Mercado Pago {importado.mercado_pago ? "importado" : "sin importar: los fijos no se controlan"} ·{" "}
         {importado.resumenes ? `resúmenes que vencen: ${importado.resumenes.split(", ").length}` : "ningún resumen vence este mes"}
       </p>
+      <p className="centrada">
+        <a className="enlace-seccion" href={`#/movimientos/${mes}`}>
+          Ver todos los movimientos de {nombreMes(mes).split(" ")[0]} →
+        </a>
+      </p>
       <div className="tablero">
 
       <Comprobante
@@ -136,7 +141,17 @@ function Contenido({
         )}
       </Comprobante>
 
-      <Comprobante titulo="En qué se fue" className="categorias">
+      <Comprobante
+        titulo={
+          <>
+            En qué se fue{" "}
+            <a className="contador enlace-seccion" href="#/categorias">
+              editar categorías
+            </a>
+          </>
+        }
+        className="categorias"
+      >
         {reporte.categorias.length === 0 ? (
           <p className="vacio">Sin gastos este mes.</p>
         ) : (

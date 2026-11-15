@@ -1,4 +1,5 @@
 // Revisar: los gastos grandes sin categoría y "Gastos varios" agrupado, para categorizar con un toque.
+import { nombreFuente } from "./fuentes";
 import { useCallback, useEffect, useState } from "react";
 import {
   crearRegla,
@@ -155,7 +156,7 @@ function TarjetaPendiente({
       }
     >
       <p className="pendiente-meta">
-        {diaYMes(pendiente.fecha)} · {pendiente.moneda}
+        {diaYMes(pendiente.fecha)} · {nombreFuente(pendiente.fuente)} · {pendiente.moneda}
       </p>
       <p className="pendiente-descripcion">{pendiente.descripcion}</p>
       <p className="monto-grande">
@@ -217,6 +218,7 @@ function FilaGrupo({ grupo, alResolver, alFallar }: { grupo: GrupoVarios; catego
         <strong>{grupo.texto}</strong>
         <span>
           {grupo.movimientos === 1 ? "1 movimiento" : `${grupo.movimientos} movimientos`}
+          {` · ${grupo.fuentes.map((f) => nombreFuente(f)).join(", ")}`}
           {grupo.plan_concepto && ` · del plan: ${grupo.plan_concepto}`}
         </span>
       </div>

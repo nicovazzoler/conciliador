@@ -7,6 +7,7 @@ import "./estilos.css";
 import "./pantallas.css";
 import "./plan.css";
 import "./inversiones.css";
+import "./movimientos.css";
 
 createRoot(document.getElementById("raiz")!).render(
   <StrictMode>

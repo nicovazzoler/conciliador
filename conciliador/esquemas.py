@@ -142,6 +142,7 @@ class Pendiente(BaseModel):
     descripcion: str
     monto_centavos: int
     moneda: str
+    fuente: str  # mercado_pago, tarjeta_comafi, tarjeta_nacion o manual.
     sugerido: str  # El texto que se propone para la regla.
 
 
@@ -160,6 +161,7 @@ class GrupoVarios(BaseModel):
     total_centavos: int
     ejemplo: str
     plan_concepto: str | None  # Si el grupo es de un fijo o una cuota del plan.
+    fuentes: list[str]  # De dónde vienen los movimientos del grupo.
 
 
 class ReglaNueva(BaseModel):
@@ -293,3 +295,60 @@ class Inversiones(BaseModel):
 class PreciosActualizados(BaseModel):
     actualizados: int
     errores: list[str]
+
+
+# Movimientos y categorías.
+
+
+class MovimientoDelMes(BaseModel):
+    id: int
+    fecha: date
+    descripcion: str
+    fuente: str
+    tipo: str
+    categoria: str | None
+    categoria_manual: bool
+    plan_concepto: str | None
+    monto_centavos: int
+    moneda: str
+    usd_centavos: int | None
+    cuota: str | None
+    medio: str | None
+
+
+class MovimientosDelMes(BaseModel):
+    mes: str
+    entro_centavos: int  # Ingresos en pesos.
+    salio_centavos: int  # Gastos en pesos: consumos, cuotas e impuestos.
+    movimientos: list[MovimientoDelMes]
+
+
+class CategoriaElegida(BaseModel):
+    categoria: str | None  # Sin categoría: vuelve a la automática.
+
+
+class CategoriaDetalle(BaseModel):
+    nombre: str
+    movimientos: int
+    reglas: int
+    en_plan: int
+
+
+class Renombre(BaseModel):
+    de: str
+    a: str
+
+
+class Renombrada(BaseModel):
+    movimientos: int
+
+
+class ReglaDetalle(BaseModel):
+    id: int
+    texto: str
+    categoria: str
+
+
+class ReglaEditada(BaseModel):
+    texto: str
+    categoria: str

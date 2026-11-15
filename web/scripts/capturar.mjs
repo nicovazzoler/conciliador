@@ -20,7 +20,7 @@ for (const pedido of rutas.length ? rutas : ["gastos"]) {
       await pagina.waitForTimeout(400); // Que termine la transición del botón.
     }
     await pagina.evaluate(() => document.fonts.ready);
-    const archivo = `${salida}/${ruta}${boton ? `-${boton.toLowerCase()}` : ""}-${nombre}.png`;
+    const archivo = `${salida}/${ruta.replaceAll("/", "-")}${boton ? `-${boton.toLowerCase()}` : ""}-${nombre}.png`;
     await pagina.screenshot({ path: archivo, fullPage: true });
     console.log(archivo);
     await pagina.close();

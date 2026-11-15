@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from conciliador import base, cotizaciones, esquemas, importar, inversiones, manual, plan, precios, reporte, revisar
+from conciliador import base, clasificar, cotizaciones, esquemas, importar, inversiones, manual, plan, precios, reporte, revisar
 
 MAXIMO_ARCHIVO = 20 * 1024 * 1024  # 20 MB: un resumen pesa menos de 1.
 MINIMO_REGLA = 3  # Una regla "Pa" alcanzaría a Pago, Pasaje, Panadería...
@@ -209,6 +209,67 @@ def crear_app(
         origen = {a: ("binance" if tipos[a] == "cripto" else "yahoo") for a in nuevos}
         base.guardar_precios(motor, nuevos, origen, datetime.now())
         return {"actualizados": len(nuevos), "errores": errores}
+
+    @app.get("/api/movimientos/{mes}", response_model=esquemas.MovimientosDelMes)
+    def ver_movimientos(mes: str):
+        if not reporte.MES.match(mes):
+            raise HTTPException(status_code=422, detail=f"mes inválido: {mes!r}")
+        filas = base.movimientos_del_mes(motor, mes)
+        pesos = [f for f in filas if f["moneda"] == "ARS"]
+        return {
+            "mes": mes,
+            "entro_centavos": sum(f["monto_centavos"] for f in pesos if f["tipo"] == "ingreso"),
+            "salio_centavos": -sum(f["monto_centavos"] for f in pesos if f["tipo"] in ("consumo", "cuota", "impuesto")),
+            "movimientos": filas,
+        }
+
+    @app.put("/api/movimientos/{movimiento_id}/categoria", status_code=204)
+    def elegir_categoria(movimiento_id: int, elegida: esquemas.CategoriaElegida):
+        categoria = (elegida.categoria or "").strip() or None
+        if not base.poner_categoria(motor, movimiento_id, categoria):
+            raise HTTPException(status_code=404, detail="no existe ese movimiento")
+        return Response(status_code=204)
+
+    @app.get("/api/categorias/detalle", response_model=list[esquemas.CategoriaDetalle])
+    def ver_categorias_detalle():
+        return base.categorias_detalle(motor)
+
+    @app.post("/api/categorias/renombrar", response_model=esquemas.Renombrada)
+    def renombrar_categoria(renombre: esquemas.Renombre):
+        de, a = renombre.de.strip(), renombre.a.strip()
+        if not de or not a or de == a:
+            raise HTTPException(status_code=422, detail="hace falta el nombre actual y uno nuevo, distinto")
+        if a == clasificar.SIN_REGLA:
+            raise HTTPException(status_code=422, detail=f"{a!r} no es una categoría: es lo que no tiene ninguna")
+        return {"movimientos": base.renombrar_categoria(motor, de, a)}
+
+    @app.delete("/api/categorias/{nombre:path}", status_code=204)
+    def borrar_categoria(nombre: str):
+        base.borrar_categoria(motor, nombre)
+        return Response(status_code=204)
+
+    @app.get("/api/reglas", response_model=list[esquemas.ReglaDetalle])
+    def ver_reglas():
+        return base.reglas(motor)
+
+    @app.put("/api/reglas/{regla_id}", status_code=204)
+    def editar_regla(regla_id: int, regla: esquemas.ReglaEditada):
+        texto, categoria = regla.texto.strip(), regla.categoria.strip()
+        if len(texto) < MINIMO_REGLA or not categoria:
+            raise HTTPException(status_code=422, detail=f"la regla necesita al menos {MINIMO_REGLA} letras y una categoría")
+        try:
+            existe = base.editar_regla(motor, regla_id, texto, categoria)
+        except base.ReglaRepetida as error:
+            raise HTTPException(status_code=409, detail=str(error))
+        if not existe:
+            raise HTTPException(status_code=404, detail="no existe esa regla")
+        return Response(status_code=204)
+
+    @app.delete("/api/reglas/{regla_id}", status_code=204)
+    def borrar_regla(regla_id: int):
+        if not base.editar_regla(motor, regla_id, None, None):
+            raise HTTPException(status_code=404, detail="no existe esa regla")
+        return Response(status_code=204)
 
     @app.get("/api/categorias", response_model=list[str])
     def ver_categorias():
