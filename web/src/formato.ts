@@ -36,7 +36,24 @@ export function hoy(fecha: Date = new Date()): string {
   return `${mesActual(fecha)}-${String(fecha.getDate()).padStart(2, "0")}`;
 }
 
+/** "2026-01", -1 → "2025-12": mueve un mes cruzando el cambio de año. */
+export function moverMes(mes: string, cuanto: number): string {
+  const [anio, numero] = mes.split("-").map(Number) as [number, number];
+  const total = anio * 12 + (numero - 1) + cuanto;
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, "0")}`;
+}
+
+/** "2026-10" → "O": la inicial del mes, para las barras de los meses anteriores. */
+export function inicialMes(mes: string): string {
+  return (NOMBRES[Number(mes.slice(5, 7)) - 1] ?? "?").charAt(0).toUpperCase();
+}
+
 /** "2026-10-05" → "05/10". */
 export function diaYMes(fecha: string): string {
   return `${fecha.slice(8, 10)}/${fecha.slice(5, 7)}`;
+}
+
+/** Un decimal que llega como texto ("2610.4545"), con miles y hasta `decimales` decimales. Solo para mostrar. */
+export function decimal(texto: string, decimales = 2): string {
+  return new Intl.NumberFormat("es-AR", { maximumFractionDigits: decimales }).format(Number(texto));
 }

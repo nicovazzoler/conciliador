@@ -3,7 +3,8 @@ import shutil
 from types import SimpleNamespace
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 from alembic import command
@@ -11,7 +12,7 @@ from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import (
-    Date, String, UniqueConstraint, create_engine, delete, func, inspect, or_, select, text,
+    Date, DateTime, String, UniqueConstraint, create_engine, delete, func, inspect, or_, select, text, update,
 )
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.engine import Engine
@@ -94,6 +95,7 @@ class Fijo(Base):
     monto_centavos: Mapped[int]
     moneda: Mapped[str] = mapped_column(String(3))
     dia: Mapped[int | None]
+    categoria: Mapped[str | None] = mapped_column(String(60))
 
 
 class Cuota(Base):
@@ -106,6 +108,7 @@ class Cuota(Base):
     moneda: Mapped[str] = mapped_column(String(3))
     cantidad: Mapped[int]
     primer_mes: Mapped[str] = mapped_column(String(7))
+    categoria: Mapped[str | None] = mapped_column(String(60))
 
 
 @dataclass(frozen=True)
@@ -225,9 +228,172 @@ def guardar_resumen(motor: Engine, resumen: ResumenTarjeta) -> None:
         sesion.execute(orden)
 
 
-def reemplazar_plan(motor: Engine, plan: PlanLeido) -> None:
-    """El plan es el archivo: cada importación reemplaza lo anterior."""
+class ConceptoRepetido(Exception):
+    """El concepto identifica al fijo o cuota: no puede haber dos iguales en el plan."""
+
+
+def hay_plan(motor: Engine) -> bool:
+    with Session(motor) as sesion:
+        return sesion.scalar(select(func.count()).select_from(Fijo)) + sesion.scalar(
+            select(func.count()).select_from(Cuota)
+        ) > 0
+
+
+def leer_plan(motor: Engine) -> PlanLeido:
+    """El plan guardado, como si se hubiera leído de plan.csv."""
+    from conciliador.plan import CuotaPlan, FijoPlan
+
+    with Session(motor) as sesion:
+        fijos = [FijoPlan(f.concepto, f.texto, f.monto_centavos, f.moneda, f.dia, f.categoria)
+                 for f in sesion.scalars(select(Fijo).order_by(Fijo.concepto))]
+        cuotas = [CuotaPlan(c.concepto, c.texto, c.monto_centavos, c.moneda, c.cantidad, c.primer_mes, c.categoria)
+                  for c in sesion.scalars(select(Cuota).order_by(Cuota.primer_mes, Cuota.concepto))]
+    return PlanLeido(fijos=fijos, cuotas=cuotas)
+
+
+def plan_con_ids(motor: Engine) -> dict:
+    """Los fijos y las cuotas con su id, para editarlos desde la app."""
+    with Session(motor) as sesion:
+        fijos = [{"id": f.id, "concepto": f.concepto, "texto": f.texto, "monto_centavos": f.monto_centavos,
+                  "moneda": f.moneda, "dia": f.dia, "categoria": f.categoria}
+                 for f in sesion.scalars(select(Fijo).order_by(Fijo.concepto))]
+        cuotas = [{"id": c.id, "concepto": c.concepto, "texto": c.texto, "monto_centavos": c.monto_centavos,
+                   "moneda": c.moneda, "cantidad": c.cantidad, "primer_mes": c.primer_mes, "categoria": c.categoria}
+                  for c in sesion.scalars(select(Cuota).order_by(Cuota.primer_mes, Cuota.concepto))]
+    return {"fijos": fijos, "cuotas": cuotas}
+
+
+def guardar_del_plan(motor: Engine, tabla: str, item, item_id: int | None = None) -> int | None:
+    """Crea (sin id) o modifica (con id) un fijo o una cuota. Devuelve el id, o None si no existe."""
+    modelo = Fijo if tabla == "fijos" else Cuota
     with Session(motor) as sesion, sesion.begin():
+        repetido = [
+            *sesion.scalars(select(Fijo.id).where(Fijo.concepto == item.concepto)),
+            *sesion.scalars(select(Cuota.id).where(Cuota.concepto == item.concepto)),
+        ]
+        propio = item_id is not None and sesion.get(modelo, item_id) is not None
+        if repetido and not (propio and repetido == [item_id] and sesion.get(modelo, item_id).concepto == item.concepto):
+            raise ConceptoRepetido(f"ya hay algo en el plan que se llama {item.concepto!r}")
+        if item_id is None:
+            fila = modelo()
+            sesion.add(fila)
+            anterior = None
+        else:
+            fila = sesion.get(modelo, item_id)
+            if fila is None:
+                return None
+            anterior = fila.concepto
+        for campo, valor in vars(item).items():
+            setattr(fila, "cantidad" if campo == "cantidad" else campo, valor)
+        sesion.flush()
+        nuevo_id = fila.id
+        _soltar_categoria_del_plan(sesion, {anterior, item.concepto})
+    aplicar_reglas(motor)
+    return nuevo_id
+
+
+def borrar_del_plan(motor: Engine, tabla: str, item_id: int) -> bool:
+    modelo = Fijo if tabla == "fijos" else Cuota
+    with Session(motor) as sesion, sesion.begin():
+        fila = sesion.get(modelo, item_id)
+        if fila is None:
+            return False
+        _soltar_categoria_del_plan(sesion, {fila.concepto})
+        sesion.delete(fila)
+    aplicar_reglas(motor)
+    return True
+
+
+def _soltar_categoria_del_plan(sesion: Session, conceptos: set) -> None:
+    """Lo que tomó la categoría de un fijo o cuota que cambió se vuelve a calcular desde cero.
+
+    Sin esto, si se borra la categoría del plan, los gastos se quedarían con la vieja.
+    """
+    sesion.execute(
+        update(Movimiento)
+        .where(Movimiento.plan_concepto.in_([c for c in conceptos if c]), Movimiento.categoria_manual.is_(False))
+        .values(categoria=None, pendiente=False)
+    )
+
+
+class OperacionInversion(Base):
+    """Una compra o venta de un activo. Cantidad y precio como texto decimal: no entran en centavos."""
+
+    __tablename__ = "operaciones"
+    __table_args__ = (UniqueConstraint("fuente", "numero_operacion"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fuente: Mapped[str] = mapped_column(String(30))
+    numero_operacion: Mapped[str] = mapped_column(String(80))
+    fecha_hora: Mapped[datetime] = mapped_column(DateTime)
+    activo: Mapped[str] = mapped_column(String(20))
+    tipo_activo: Mapped[str] = mapped_column(String(10))
+    lado: Mapped[str] = mapped_column(String(10))
+    cantidad: Mapped[str] = mapped_column(String(40))
+    precio: Mapped[str] = mapped_column(String(40))
+    comision: Mapped[str] = mapped_column(String(40))
+
+
+class PrecioActivo(Base):
+    """El último precio conocido de cada activo, en USD, con su hora y su origen."""
+
+    __tablename__ = "precios"
+
+    activo: Mapped[str] = mapped_column(String(20), primary_key=True)
+    precio: Mapped[str] = mapped_column(String(40))
+    actualizado: Mapped[datetime] = mapped_column(DateTime)
+    origen: Mapped[str] = mapped_column(String(20))
+
+
+def guardar_operacion(motor: Engine, fuente: str, numero: str, op) -> bool:
+    """Guarda una operación. Devuelve False si ya estaba: se reconoce por fuente y número."""
+    with Session(motor) as sesion, sesion.begin():
+        orden = (
+            insert(OperacionInversion)
+            .values(
+                fuente=fuente, numero_operacion=numero, fecha_hora=op.fecha_hora, activo=op.activo,
+                tipo_activo=op.tipo_activo, lado=op.lado, cantidad=str(op.cantidad), precio=str(op.precio),
+                comision=str(op.comision),
+            )
+            .on_conflict_do_nothing(index_elements=["fuente", "numero_operacion"])
+        )
+        return sesion.execute(orden).rowcount == 1
+
+
+def operaciones(motor: Engine) -> list:
+    from conciliador.inversiones import Operacion
+
+    with Session(motor) as sesion:
+        return [
+            Operacion(o.id, o.fecha_hora, o.activo, o.tipo_activo, o.lado, Decimal(o.cantidad), Decimal(o.precio),
+                      Decimal(o.comision), o.fuente)
+            for o in sesion.scalars(select(OperacionInversion))
+        ]
+
+
+def borrar_operacion(motor: Engine, operacion_id: int) -> bool:
+    with Session(motor) as sesion, sesion.begin():
+        return sesion.execute(delete(OperacionInversion).where(OperacionInversion.id == operacion_id)).rowcount == 1
+
+
+def guardar_precios(motor: Engine, precios: dict, origen: dict[str, str], momento: datetime) -> None:
+    with Session(motor) as sesion, sesion.begin():
+        for activo, precio in precios.items():
+            sesion.merge(PrecioActivo(activo=activo, precio=str(precio), actualizado=momento, origen=origen[activo]))
+
+
+def precios(motor: Engine) -> tuple[dict, datetime | None]:
+    """Los precios guardados y la hora del más viejo: lo que se muestra es tan nuevo como ese."""
+    with Session(motor) as sesion:
+        filas = sesion.scalars(select(PrecioActivo)).all()
+    return {f.activo: Decimal(f.precio) for f in filas}, min((f.actualizado for f in filas), default=None)
+
+
+def reemplazar_plan(motor: Engine, plan: PlanLeido) -> None:
+    """Reemplaza el plan entero, por ejemplo al subir un plan.csv."""
+    with Session(motor) as sesion, sesion.begin():
+        anteriores = {*sesion.scalars(select(Fijo.concepto)), *sesion.scalars(select(Cuota.concepto))}
+        _soltar_categoria_del_plan(sesion, anteriores)
         sesion.execute(delete(Fijo))
         sesion.execute(delete(Cuota))
         sesion.add_all(
@@ -237,6 +403,7 @@ def reemplazar_plan(motor: Engine, plan: PlanLeido) -> None:
                 monto_centavos=f.monto_centavos,
                 moneda=f.moneda,
                 dia=f.dia,
+                categoria=f.categoria,
             )
             for f in plan.fijos
         )
@@ -248,13 +415,15 @@ def reemplazar_plan(motor: Engine, plan: PlanLeido) -> None:
                 moneda=c.moneda,
                 cantidad=c.cantidad,
                 primer_mes=c.primer_mes,
+                categoria=c.categoria,
             )
             for c in plan.cuotas
         )
 
 
 def aplicar_reglas(motor: Engine) -> None:
-    """Categoriza los gastos sin categoría real. Nunca pisa una categoría puesta a mano."""
+    """Categoriza los gastos. Gana la categoría puesta a mano, después la del fijo o cuota del plan
+    al que corresponde el gasto, y después las reglas."""
     with Session(motor) as sesion, sesion.begin():
         reglas = [(r.valor, r.categoria) for r in sesion.scalars(select(Regla))]
         fijos = sesion.scalars(select(Fijo)).all()
@@ -262,10 +431,19 @@ def aplicar_reglas(motor: Engine) -> None:
         gastos = sesion.scalars(
             select(Movimiento).where(Movimiento.tipo.in_(clasificar.TIPOS_DE_GASTO))
         ).all()
+        del_plan = {p.concepto: p.categoria for p in [*fijos, *cuotas] if p.categoria}
         for gasto in gastos:
             # Derivado del plan y del movimiento: se recalcula entero, porque el plan pudo cambiar.
             gasto.plan_concepto = clasificar.del_plan(gasto, fijos, cuotas)
-            if not gasto.categoria_manual and gasto.categoria in (None, clasificar.SIN_REGLA):
+            if gasto.categoria_manual:
+                continue
+            if gasto.plan_concepto in del_plan:
+                # Lo anotado en el plan es más específico que una regla de texto.
+                gasto.categoria, gasto.pendiente = del_plan[gasto.plan_concepto], False
+            elif gasto.tipo == "impuesto":
+                # Los cargos de la tarjeta van juntos, sin una regla por cada sello o IVA.
+                gasto.categoria, gasto.pendiente = clasificar.IMPUESTOS, False
+            elif gasto.categoria in (None, clasificar.SIN_REGLA):
                 gasto.categoria, gasto.pendiente = clasificar.decidir(gasto, reglas, fijos, cuotas)
 
 
@@ -285,6 +463,22 @@ class ReglaRepetida(Exception):
     def __init__(self, categoria: str):
         super().__init__(f"ya hay una regla con ese texto, para la categoría {categoria!r}")
         self.categoria = categoria
+
+
+def categorias(motor: Engine) -> list[str]:
+    """Las categorías en uso, de la más usada a la menos. "Gastos varios" no es una categoría elegida."""
+    with Session(motor) as sesion:
+        filas = sesion.execute(
+            select(Movimiento.categoria, func.count())
+            .where(Movimiento.categoria.is_not(None), Movimiento.categoria != clasificar.SIN_REGLA)
+            .group_by(Movimiento.categoria)
+            .order_by(func.count().desc(), Movimiento.categoria)
+        ).all()
+        en_uso = [categoria for categoria, _ in filas]
+        sin_movimientos = sesion.scalars(
+            select(Regla.categoria).where(Regla.categoria.not_in(en_uso)).distinct().order_by(Regla.categoria)
+        ).all()
+        return en_uso + list(sin_movimientos)
 
 
 def gastos_varios(motor: Engine) -> list[dict]:

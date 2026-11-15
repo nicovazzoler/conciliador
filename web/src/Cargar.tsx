@@ -1,17 +1,23 @@
 // Cargar gastos y pagos que no vienen en un PDF, y borrar lo cargado a mano.
+import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   borrarManual,
   cargarGasto,
   cargarPago,
+  traerCategorias,
   traerManuales,
   type Aviso,
   type GastoNuevo,
   type Manual,
 } from "./api";
+import { nombreTarjeta } from "./atender";
+import { Comprobante } from "./comprobante";
+import { Segmentado } from "./controles";
 import { diaYMes, hoy, plata } from "./formato";
 
 type Tipo = "gasto" | "pago";
+type Moneda = "ARS" | "USD";
 type Mensaje = { tipo: "bien" | "error"; texto: string } | null;
 
 const MEDIOS = [
@@ -25,9 +31,15 @@ const TARJETAS = [
   ["tarjeta_nacion", "Nación"],
 ] as const;
 
+const MONEDAS = [
+  ["ARS", "Pesos"],
+  ["USD", "Dólares"],
+] as const;
+
 export function Cargar() {
   const [tipo, setTipo] = useState<Tipo>("gasto");
   const [manuales, setManuales] = useState<Manual[]>([]);
+  const [categorias, setCategorias] = useState<string[]>([]);
   const [mensaje, setMensaje] = useState<Mensaje>(null);
 
   const recargar = useCallback(() => {
@@ -36,67 +48,62 @@ export function Cargar() {
       .catch((error: Error) => setMensaje({ tipo: "error", texto: error.message }));
   }, []);
   useEffect(recargar, [recargar]);
+  useEffect(() => {
+    traerCategorias().then(setCategorias).catch(() => setCategorias([]));
+  }, []);
 
-  function guardado(texto: string) {
-    setMensaje({ tipo: "bien", texto });
-    recargar();
-  }
+  const avisar = {
+    alGuardar: (texto: string) => {
+      setMensaje({ tipo: "bien", texto });
+      recargar();
+    },
+    alFallar: (texto: string) => setMensaje({ tipo: "error", texto }),
+  };
 
   return (
     <main className="pagina">
-      <header className="encabezado">
-        <h1>Cargar</h1>
-      </header>
-
-      <div className="pestanias" role="tablist">
-        {(["gasto", "pago"] as const).map((opcion) => (
-          <button
-            key={opcion}
-            role="tab"
-            aria-selected={tipo === opcion}
-            className={tipo === opcion ? "pestania activa" : "pestania"}
-            onClick={() => {
-              setTipo(opcion);
+      <h1 className="titulo-pagina">Cargar</h1>
+      <div className="paneles">
+        <section className="panel">
+          <Segmentado
+            etiqueta="Qué cargar"
+            opciones={[
+              ["gasto", "Gasto"],
+              ["pago", "Pago de tarjeta"],
+            ]}
+            valor={tipo}
+            alCambiar={(valor) => {
+              setTipo(valor);
               setMensaje(null);
             }}
-          >
-            {opcion === "gasto" ? "Gasto" : "Pago de tarjeta"}
-          </button>
-        ))}
+          />
+          {tipo === "gasto" ? <FormularioGasto {...avisar} categorias={categorias} /> : <FormularioPago {...avisar} />}
+          {mensaje && (
+            <p className={`mensaje mensaje-${mensaje.tipo}`} role="status">
+              {mensaje.texto}
+            </p>
+          )}
+        </section>
+
+        <Comprobante titulo="Últimos cargados a mano" className="panel">
+          {manuales.length === 0 ? (
+            <p className="vacio">Todavía no cargaste nada a mano.</p>
+          ) : (
+            <ul className="lista">
+              {manuales.map((manual) => (
+                <FilaManual key={manual.id} manual={manual} alBorrar={() => avisar.alGuardar("Borrado.")} alFallar={avisar.alFallar} />
+              ))}
+            </ul>
+          )}
+        </Comprobante>
       </div>
-
-      {tipo === "gasto" ? (
-        <FormularioGasto alGuardar={guardado} alFallar={(texto) => setMensaje({ tipo: "error", texto })} />
-      ) : (
-        <FormularioPago alGuardar={guardado} alFallar={(texto) => setMensaje({ tipo: "error", texto })} />
-      )}
-
-      {mensaje && <p className={`mensaje mensaje-${mensaje.tipo}`}>{mensaje.texto}</p>}
-
-      <section className="seccion">
-        <h2>Últimos cargados a mano</h2>
-        {manuales.length === 0 ? (
-          <p className="nota">Todavía no cargaste nada a mano.</p>
-        ) : (
-          <ul>
-            {manuales.map((manual) => (
-              <FilaManual
-                key={manual.id}
-                manual={manual}
-                alBorrar={() => guardado("Borrado.")}
-                alFallar={(texto) => setMensaje({ tipo: "error", texto })}
-              />
-            ))}
-          </ul>
-        )}
-      </section>
     </main>
   );
 }
 
 type Avisar = { alGuardar: (texto: string) => void; alFallar: (texto: string) => void };
 
-function FormularioGasto({ alGuardar, alFallar }: Avisar) {
+function FormularioGasto({ alGuardar, alFallar, categorias }: Avisar & { categorias: string[] }) {
   const [datos, setDatos] = useState<GastoNuevo>(gastoVacio());
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [categoria, setCategoria] = useState("");
@@ -112,7 +119,7 @@ function FormularioGasto({ alGuardar, alFallar }: Avisar) {
     evento.preventDefault();
     setEnviando(true);
     try {
-      // Si ya mostramos avisos, este segundo envío es la confirmación.
+      // Si ya se mostraron avisos, este segundo envío es la confirmación.
       const confirmado = avisos.length > 0;
       const resultado = await cargarGasto({
         ...datos,
@@ -137,7 +144,8 @@ function FormularioGasto({ alGuardar, alFallar }: Avisar) {
 
   return (
     <form className="formulario" onSubmit={enviar}>
-      <Monto valor={datos.monto} alCambiar={(valor) => cambiar("monto", valor)} />
+      <Monto valor={datos.monto} moneda={datos.moneda ?? "ARS"} alCambiar={(valor) => cambiar("monto", valor)} />
+      <Segmentado etiqueta="Moneda" opciones={MONEDAS} valor={datos.moneda ?? "ARS"} alCambiar={(valor) => cambiar("moneda", valor)} />
       <label>
         Descripción
         <input
@@ -147,23 +155,14 @@ function FormularioGasto({ alGuardar, alFallar }: Avisar) {
           placeholder="Café, Medicus, PAPA Dexter…"
         />
       </label>
-      <div className="dos-columnas">
-        <label>
-          Fecha
-          <input type="date" required max={hoy()} value={datos.fecha ?? ""} onChange={(e) => cambiar("fecha", e.target.value)} />
-        </label>
-        <label>
-          Medio
-          <select value={datos.medio} onChange={(e) => cambiar("medio", e.target.value as GastoNuevo["medio"])}>
-            {MEDIOS.map(([valor, texto]) => (
-              <option key={valor} value={valor}>
-                {texto}
-              </option>
-            ))}
-          </select>
-        </label>
+      <label>
+        Fecha
+        <input type="date" required max={hoy()} value={datos.fecha ?? ""} onChange={(e) => cambiar("fecha", e.target.value)} />
+      </label>
+      <div className="campo">
+        <span>Medio</span>
+        <Segmentado etiqueta="Medio" opciones={MEDIOS} valor={datos.medio ?? "efectivo"} alCambiar={(valor) => cambiar("medio", valor)} />
       </div>
-      <Moneda valor={datos.moneda ?? "ARS"} alCambiar={(valor) => cambiar("moneda", valor)} />
 
       {avisos.length > 0 && (
         <div className="avisos" role="alert">
@@ -172,8 +171,13 @@ function FormularioGasto({ alGuardar, alFallar }: Avisar) {
           ))}
           {grande && (
             <label>
-              Categoría (opcional: si la dejás vacía, queda para revisar)
-              <input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Hogar, Ropa…" />
+              Categoría, si querés ponerla ya
+              <input list="categorias-cargar" value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Hogar, Ropa…" />
+              <datalist id="categorias-cargar">
+                {categorias.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
             </label>
           )}
         </div>
@@ -195,7 +199,7 @@ function FormularioPago({ alGuardar, alFallar }: Avisar) {
   const [tarjeta, setTarjeta] = useState<(typeof TARJETAS)[number][0]>("tarjeta_comafi");
   const [monto, setMonto] = useState("");
   const [fecha, setFecha] = useState(hoy());
-  const [moneda, setMoneda] = useState<"ARS" | "USD">("ARS");
+  const [moneda, setMoneda] = useState<Moneda>("ARS");
   const [enviando, setEnviando] = useState(false);
 
   async function enviar(evento: FormEvent) {
@@ -203,7 +207,7 @@ function FormularioPago({ alGuardar, alFallar }: Avisar) {
     setEnviando(true);
     try {
       await cargarPago({ tarjeta, monto, fecha, moneda });
-      alGuardar("Pago guardado. No suma como gasto: marca el resumen como avisado.");
+      alGuardar("Pago guardado. No suma como gasto: deja el resumen como avisado.");
       setMonto("");
     } catch (error) {
       alFallar((error as Error).message);
@@ -214,22 +218,16 @@ function FormularioPago({ alGuardar, alFallar }: Avisar) {
 
   return (
     <form className="formulario" onSubmit={enviar}>
+      <Monto valor={monto} moneda={moneda} alCambiar={setMonto} />
+      <Segmentado etiqueta="Moneda" opciones={MONEDAS} valor={moneda} alCambiar={setMoneda} />
+      <div className="campo">
+        <span>Tarjeta</span>
+        <Segmentado etiqueta="Tarjeta" opciones={TARJETAS} valor={tarjeta} alCambiar={setTarjeta} />
+      </div>
       <label>
-        Tarjeta
-        <select value={tarjeta} onChange={(e) => setTarjeta(e.target.value as typeof tarjeta)}>
-          {TARJETAS.map(([valor, texto]) => (
-            <option key={valor} value={valor}>
-              {texto}
-            </option>
-          ))}
-        </select>
-      </label>
-      <Monto valor={monto} alCambiar={setMonto} />
-      <label>
-        Fecha
+        Fecha del pago
         <input type="date" required max={hoy()} value={fecha} onChange={(e) => setFecha(e.target.value)} />
       </label>
-      <Moneda valor={moneda} alCambiar={setMoneda} />
       <button className="principal" disabled={enviando}>
         {enviando ? "Guardando…" : "Guardar pago"}
       </button>
@@ -237,40 +235,31 @@ function FormularioPago({ alGuardar, alFallar }: Avisar) {
   );
 }
 
-function Monto({ valor, alCambiar }: { valor: string; alCambiar: (valor: string) => void }) {
+/** El monto, grande y primero, con el teclado numérico. Viaja como texto y nunca pasa por float. */
+function Monto({ valor, moneda, alCambiar }: { valor: string; moneda: string; alCambiar: (valor: string) => void }) {
   return (
-    <label>
-      Monto
-      {/* Texto con teclado numérico: el monto viaja como texto y nunca pasa por float. */}
-      <input
-        required
-        inputMode="decimal"
-        autoComplete="off"
-        value={valor}
-        onChange={(evento) => alCambiar(evento.target.value)}
-        placeholder="15.000 o 9.832,83"
-      />
+    <label className="monto-entrada">
+      <span>Monto</span>
+      <span className="monto-entrada-caja">
+        <span className="monto-entrada-moneda" aria-hidden="true">
+          {moneda === "USD" ? "U$D" : "$"}
+        </span>
+        <input
+          required
+          inputMode="decimal"
+          autoComplete="off"
+          value={valor}
+          onChange={(evento) => alCambiar(evento.target.value)}
+          placeholder="0"
+        />
+      </span>
     </label>
-  );
-}
-
-function Moneda({ valor, alCambiar }: { valor: "ARS" | "USD"; alCambiar: (valor: "ARS" | "USD") => void }) {
-  return (
-    <fieldset className="moneda">
-      <legend>Moneda</legend>
-      {(["ARS", "USD"] as const).map((opcion) => (
-        <label key={opcion}>
-          <input type="radio" name="moneda" checked={valor === opcion} onChange={() => alCambiar(opcion)} />
-          {opcion === "ARS" ? "Pesos" : "Dólares"}
-        </label>
-      ))}
-    </fieldset>
   );
 }
 
 function FilaManual({ manual, alBorrar, alFallar }: { manual: Manual; alBorrar: () => void; alFallar: (texto: string) => void }) {
   const [confirmando, setConfirmando] = useState(false);
-  const detalle = manual.plan_concepto ?? manual.categoria ?? (manual.tarjeta ? "pago de tarjeta" : "");
+  const detalle = manual.plan_concepto ?? manual.categoria ?? (manual.tarjeta ? `pago ${nombreTarjeta(manual.tarjeta)}` : "");
 
   async function borrar() {
     try {
@@ -282,28 +271,28 @@ function FilaManual({ manual, alBorrar, alFallar }: { manual: Manual; alBorrar: 
   }
 
   return (
-    <li className="fila">
-      <div className="fila-texto">
-        <strong>
-          {diaYMes(manual.fecha)} · {plata(manual.monto_centavos, manual.moneda)}
-        </strong>
-        <p>
-          {manual.descripcion}
+    <li className="item">
+      <div className="item-texto">
+        <strong>{manual.descripcion}</strong>
+        <span>
+          {diaYMes(manual.fecha)}
+          {manual.medio && ` · ${manual.medio}`}
           {detalle && ` · ${detalle}`}
-        </p>
+        </span>
       </div>
+      <span className="item-monto">{plata(manual.monto_centavos, manual.moneda)}</span>
       {confirmando ? (
-        <div className="confirmar">
-          <button className="peligro" onClick={borrar}>
-            Sí, borrar
+        <span className="item-acciones">
+          <button className="peligro chico" onClick={borrar}>
+            Borrar
           </button>
-          <button className="secundario" onClick={() => setConfirmando(false)}>
+          <button className="secundario chico" onClick={() => setConfirmando(false)}>
             No
           </button>
-        </div>
+        </span>
       ) : (
-        <button className="secundario" onClick={() => setConfirmando(true)}>
-          Borrar
+        <button className="icono" onClick={() => setConfirmando(true)} aria-label={`Borrar ${manual.descripcion}`}>
+          <Trash2 size={16} aria-hidden="true" />
         </button>
       )}
     </li>

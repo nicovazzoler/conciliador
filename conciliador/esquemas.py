@@ -1,5 +1,5 @@
 """La forma del JSON de la API. FastAPI valida cada respuesta contra esto y lo publica en /docs."""
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel
@@ -61,6 +61,13 @@ class Resumen(BaseModel):
 class Importado(BaseModel):
     mercado_pago: bool
     resumenes: str | None
+
+
+class MesHistorial(BaseModel):
+    mes: str
+    pesos_centavos: int
+    dolares_centavos: int
+    total_usd_centavos: int
 
 
 class Reporte(BaseModel):
@@ -181,3 +188,108 @@ class Importacion(BaseModel):
     aviso_cotizaciones: str | None
     pendientes: int
     sin_usd: int
+
+
+# Plan.
+
+
+class FijoEntrada(BaseModel):
+    concepto: str
+    texto: str  # Lo que se busca en la descripción de los movimientos.
+    monto: str  # Texto, como en Cargar: nunca float.
+    moneda: Literal["ARS", "USD"] = "ARS"
+    dia: int | None = None
+    categoria: str | None = None
+
+
+class CuotaEntrada(BaseModel):
+    concepto: str
+    texto: str
+    monto: str
+    moneda: Literal["ARS", "USD"] = "ARS"
+    cantidad: int
+    primer_mes: str  # AAAA-MM
+    categoria: str | None = None
+
+
+class FijoPlan(BaseModel):
+    id: int
+    concepto: str
+    texto: str
+    monto_centavos: int
+    moneda: str
+    dia: int | None
+    categoria: str | None
+
+
+class CuotaPlan(BaseModel):
+    id: int
+    concepto: str
+    texto: str
+    monto_centavos: int
+    moneda: str
+    cantidad: int
+    primer_mes: str
+    categoria: str | None
+
+
+class Plan(BaseModel):
+    fijos: list[FijoPlan]
+    cuotas: list[CuotaPlan]
+
+
+# Inversiones.
+
+
+class OperacionNueva(BaseModel):
+    fecha: date
+    activo: str
+    tipo_activo: Literal["cripto", "accion"]
+    lado: Literal["compra", "venta"]
+    cantidad: str  # Texto decimal: 0,0412. Nunca float.
+    precio: str  # USD por unidad.
+    comision: str = "0"
+
+
+class PosicionInversion(BaseModel):
+    activo: str
+    tipo_activo: str
+    cantidad: str
+    costo_promedio: str
+    invertido_centavos: int
+    precio: str | None
+    valor_centavos: int | None
+    no_realizado_centavos: int | None
+
+
+class OperacionInversion(BaseModel):
+    id: int
+    fecha: date
+    activo: str
+    tipo_activo: str
+    lado: str
+    cantidad: str
+    precio: str
+    comision_centavos: int
+    resultado_centavos: int | None  # Solo las ventas: la ganancia o pérdida realizada.
+    abierta: bool  # Una compra de un activo que todavía se tiene.
+
+
+class Inversiones(BaseModel):
+    mes: str
+    cartera_centavos: int
+    invertido_centavos: int
+    no_realizado_centavos: int
+    realizado_mes_centavos: int
+    comisiones_mes_centavos: int
+    operaciones_mes: int
+    sin_precio: list[str]
+    precios_al: datetime | None
+    avisos: list[str]
+    posiciones: list[PosicionInversion]
+    operaciones: list[OperacionInversion]
+
+
+class PreciosActualizados(BaseModel):
+    actualizados: int
+    errores: list[str]

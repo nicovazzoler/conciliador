@@ -1,0 +1,369 @@
+/* Cargar, Revisar e Importar. Usan las variables de estilos.css. */
+
+.paneles {
+  display: grid;
+  gap: 1rem;
+}
+
+.paneles > * {
+  min-width: 0;
+}
+
+.panel {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+/* Opciones excluyentes: Gasto o Pago, Pesos o Dólares, el medio. */
+
+.segmentado {
+  display: flex;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.04);
+  border: 1px solid var(--vidrio-borde);
+}
+
+.segmento {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: clamp(0.8rem, 3.4vw, 0.9rem);
+  font-weight: 600;
+  padding: 0.55rem 0.35rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--suave);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 160ms ease-out, color 160ms ease-out;
+}
+
+.segmento:hover {
+  color: var(--texto);
+}
+
+.segmento.activo {
+  background: var(--violeta);
+  color: #fff;
+}
+
+.campo {
+  display: grid;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--suave);
+}
+
+.campo > input {
+  font: inherit;
+  font-size: 1rem;
+  color: var(--texto);
+  background: rgb(255 255 255 / 0.04);
+  border: 1px solid var(--vidrio-borde);
+  border-radius: 14px;
+  padding: 0.65rem 0.85rem;
+  min-height: 2.9rem;
+  caret-color: var(--violeta);
+}
+
+.formulario {
+  gap: 1.1rem;
+}
+
+.formulario input:not([type="radio"]),
+.formulario select,
+.campo-regla input,
+.grupo-accion input {
+  background: rgb(255 255 255 / 0.04);
+  border-color: var(--vidrio-borde);
+}
+
+/* El monto: lo primero y lo más grande, como en el boceto. */
+
+.monto-entrada {
+  align-items: center;
+  text-align: center;
+}
+
+.monto-entrada-caja {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.monto-entrada-moneda {
+  color: var(--suave);
+  font-weight: 600;
+  font-stretch: 125%;
+  font-size: 1.3rem;
+}
+
+.formulario .monto-entrada input[inputmode="decimal"] {
+  field-sizing: content;
+  width: auto;
+  min-width: 2ch;
+  max-width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0.2rem 0;
+  min-height: 0;
+  font: 750 2.4rem/1.1 var(--letra);
+  font-stretch: 125%;
+  letter-spacing: -0.02em;
+}
+
+.formulario .monto-entrada input[inputmode="decimal"]:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 -2px 0 var(--violeta);
+  border-radius: 0;
+}
+
+/* Listas dentro de un comprobante: lo cargado a mano, los grupos, los archivos. */
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 0;
+}
+
+.item + .item {
+  border-top: 1.5px dashed var(--borde);
+}
+
+.item-texto {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.item-texto strong {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.item-texto span {
+  color: var(--suave);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.item-monto {
+  font: 500 0.92rem var(--numeros);
+  white-space: nowrap;
+}
+
+.item-acciones {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.numeros {
+  font-family: var(--numeros);
+  font-size: 0.88rem;
+}
+
+button.chico {
+  min-height: 2.2rem;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+button.icono {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  border: 1px solid var(--vidrio-borde);
+  background: transparent;
+  color: var(--suave);
+  cursor: pointer;
+}
+
+button.icono:hover {
+  color: var(--rojo);
+  border-color: var(--rojo);
+}
+
+button.boton-texto {
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--violeta);
+  cursor: pointer;
+  text-align: left;
+}
+
+/* Revisar. */
+
+.pendiente-meta {
+  margin: 0;
+  color: var(--suave);
+  font: 500 0.85rem var(--numeros);
+}
+
+.pendiente-descripcion {
+  margin: 0.2rem 0 0.4rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.comprobante .monto-grande + .campo {
+  margin-top: 1.1rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--vidrio-borde);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--texto);
+  cursor: pointer;
+}
+
+.chip.activo {
+  background: var(--violeta);
+  border-color: var(--violeta);
+  color: #fff;
+}
+
+.campo-regla {
+  display: grid;
+  gap: 0.45rem;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+  color: var(--suave);
+}
+
+.campo-regla input,
+.grupo-accion input {
+  font: 500 0.95rem var(--numeros);
+  color: var(--texto);
+  border: 1px solid var(--vidrio-borde);
+  border-radius: 12px;
+  padding: 0.55rem 0.75rem;
+  min-height: 2.6rem;
+  caret-color: var(--violeta);
+}
+
+.grupo-accion input {
+  font-family: var(--letra);
+  min-width: 0;
+  flex: 1;
+}
+
+.comprobante > .comprobante-cuerpo > button.principal {
+  width: 100%;
+}
+
+.item.grupo {
+  flex-wrap: wrap;
+}
+
+.grupo-accion {
+  display: flex;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.item.grupo.abierto {
+  padding-bottom: 1rem;
+}
+
+/* Importar. */
+
+.zona-archivos {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  padding: 2rem 1.25rem;
+  text-align: center;
+  border-radius: var(--radio);
+  border: 1.5px dashed rgb(149 81 254 / 0.55);
+  background: rgb(149 81 254 / 0.06);
+  cursor: pointer;
+  transition: background 160ms ease-out, border-color 160ms ease-out;
+}
+
+.zona-archivos:hover,
+.zona-archivos.encima {
+  background: rgb(149 81 254 / 0.12);
+  border-color: var(--violeta);
+}
+
+.zona-archivos.subiendo {
+  cursor: progress;
+  opacity: 0.75;
+}
+
+.zona-archivos span {
+  color: var(--suave);
+  font-size: 0.88rem;
+  max-width: 34ch;
+}
+
+.zona-archivos input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.zona-icono {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.3rem;
+  border-radius: 999px;
+  background: var(--violeta-fondo);
+  color: var(--violeta) !important;
+}
+
+/* En el celular, Revisar muestra una vista a la vez; en la computadora, las dos lado a lado. */
+
+@media (max-width: 859px) {
+  .oculto-celular {
+    display: none;
+  }
+}
+
+@media (min-width: 860px) {
+  .solo-celular {
+    display: none;
+  }
+
+  .paneles {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: start;
+  }
+}

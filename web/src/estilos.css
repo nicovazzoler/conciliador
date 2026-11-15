@@ -1,275 +1,566 @@
-/* Pensado primero para el celular: una columna, letra legible, toques grandes. */
+/* Sistema visual "Comprobante". Colores tomados de la referencia del usuario.
+   Primero el celular: una columna y el menú flotante abajo. Desde 860px, menú arriba y dos columnas. */
 
 :root {
-  --fondo: #f6f5f2;
-  --superficie: #ffffff;
-  --texto: #1c1b19;
-  --suave: #6b6860;
-  --borde: #e4e1da;
-  --acento: #1f6f5c;
-  --mal: #b3261e;
-  --mal-fondo: #fbe9e7;
-  --ojo: #8a5a00;
-  --ojo-fondo: #fdf0d5;
-  --bien: #1f6f5c;
-  --bien-fondo: #e3f1ec;
-  --neutro-fondo: #eceae5;
-  color-scheme: light;
-}
+  --fondo: #120a18;
+  --superficie: #1e1622;
+  --superficie-2: #2a2130;
+  --borde: #3a3040;
+  --texto: #f4f1f4;
+  --suave: #a59ea5;
+  --apagado: #4d4255;
+  --violeta: #9551fe;
+  --violeta-fondo: #2e2440;
+  --menta: #4cd886;
+  --menta-fondo: #1e3a2a;
+  --rojo: #e2625e;
+  --rojo-punto: #ad3b3c;
+  --rojo-fondo: #3a1d1d;
+  --ambar: #f2b84b;
+  --ambar-fondo: #3a2c14;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --fondo: #151513;
-    --superficie: #1f1f1c;
-    --texto: #ecebe6;
-    --suave: #a19e95;
-    --borde: #34332f;
-    --acento: #6cc3a8;
-    --mal: #f2a59f;
-    --mal-fondo: #3b1f1c;
-    --ojo: #f0c674;
-    --ojo-fondo: #3a2d12;
-    --bien: #6cc3a8;
-    --bien-fondo: #17302a;
-    --neutro-fondo: #2a2926;
-    color-scheme: dark;
-  }
+  --letra: "Archivo Variable", system-ui, sans-serif;
+  --numeros: "JetBrains Mono Variable", ui-monospace, monospace;
+  --radio: 22px;
+  --sombra: 0 10px 30px -12px rgb(0 0 0 / 0.6);
+  --vidrio: rgb(255 255 255 / 0.035);
+  --vidrio-borde: rgb(255 255 255 / 0.07);
+  --cat-1: #9551fe;
+  --cat-2: #4cd886;
+  --cat-3: #f2b84b;
+  --cat-4: #f2789f;
+  --cat-5: #5eb8ff;
+
+  color-scheme: dark;
+  accent-color: var(--violeta);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  scrollbar-color: var(--apagado) transparent;
+}
+
 body {
   margin: 0;
-  background: var(--fondo);
+  overflow-x: clip;
+  min-height: 100dvh;
   color: var(--texto);
-  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-variant-numeric: tabular-nums;
+  font: 400 16px/1.45 var(--letra);
+  background:
+    radial-gradient(70rem 36rem at 50% -14rem, rgb(149 81 254 / 0.3), transparent 70%),
+    radial-gradient(48rem 30rem at 105% 110%, rgb(149 81 254 / 0.12), transparent 70%),
+    var(--fondo);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
 }
 
-.pagina {
-  max-width: 44rem;
+::selection {
+  background: var(--violeta);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--violeta);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+a {
+  color: var(--violeta);
+  text-underline-offset: 3px;
+}
+
+h1,
+h2 {
+  margin: 0;
+  text-wrap: balance;
+}
+
+/* Marco: marca arriba; el menú flota abajo en el celular. */
+
+.app {
+  max-width: 76rem;
   margin: 0 auto;
-  padding: 1rem 1rem 3rem;
+  padding: 0 1rem;
 }
 
-.encabezado {
+.barra {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  padding: 1.1rem 0 0.5rem;
 }
 
-h1 {
-  margin: 0;
+.marca {
+  color: var(--texto);
+  text-decoration: none;
+  font-weight: 750;
+  font-stretch: 125%;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+
+.navegacion {
+  position: fixed;
+  z-index: 10;
+  left: 50%;
+  bottom: calc(0.85rem + env(safe-area-inset-bottom));
+  translate: -50% 0;
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  border-radius: 999px;
+  background: rgb(27 22 27 / 0.86);
+  border: 1px solid var(--borde);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 16px 40px -10px rgb(0 0 0 / 0.8);
+}
+
+.nav-item {
+  display: grid;
+  place-items: center;
+  width: 3.1rem;
+  height: 3.1rem;
+  border-radius: 999px;
+  color: var(--suave);
+  background: var(--superficie-2);
+  text-decoration: none;
+  transition: background 160ms ease-out, color 160ms ease-out;
+}
+
+/* En el celular el nombre no entra: queda para los lectores de pantalla. */
+.nav-item span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.nav-item[aria-current="page"] {
+  color: #fff;
+  background: var(--violeta-fondo);
+  box-shadow: inset 0 0 0 1.5px var(--violeta);
+}
+
+.nav-item.nav-cargar {
+  color: #fff;
+  background: var(--violeta);
+  box-shadow: 0 8px 20px -6px rgb(149 81 254 / 0.7);
+}
+
+.nav-item:hover {
+  color: var(--texto);
+}
+
+.pagina {
+  padding-bottom: 7rem;
+}
+
+.titulo-pagina {
   font-size: 1.6rem;
+  font-weight: 750;
+  font-stretch: 125%;
+  margin: 1rem 0;
+}
+
+/* El mes, con flechas para ir a los anteriores. */
+
+.mes {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.mes-nombre {
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 700;
   text-transform: capitalize;
 }
 
-h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1rem;
-  color: var(--suave);
-  font-weight: 600;
-}
-
-input[type="month"] {
-  font: inherit;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--borde);
-  border-radius: 0.5rem;
-  background: var(--superficie);
-  color: var(--texto);
-  min-height: 2.75rem;
-}
-
-.totales {
+button.redondo {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: 0.5rem;
-  margin: 1rem 0 0.5rem;
-}
-
-.total {
-  background: var(--superficie);
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
   border: 1px solid var(--borde);
-  border-radius: 0.75rem;
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  background: var(--superficie-2);
+  color: var(--texto);
+  cursor: pointer;
 }
 
-.total span {
-  color: var(--suave);
-  font-size: 0.85rem;
-}
-
-.total strong {
-  font-size: 1.15rem;
-}
-
-.total.destacado {
-  border-color: var(--acento);
+button.redondo:disabled {
+  color: var(--apagado);
+  cursor: default;
 }
 
 .nota {
   color: var(--suave);
-  font-size: 0.9rem;
-  margin: 0.5rem 0;
+  font-size: 0.85rem;
+  margin: 0.4rem 0;
 }
 
-.nota.aviso {
-  color: var(--ojo);
+.centrada {
+  text-align: center;
 }
 
-.nota.error {
-  color: var(--mal);
+.importado {
+  margin-bottom: 1rem;
 }
 
-.seccion {
-  margin-top: 1.5rem;
+.tablero {
+  display: grid;
+  gap: 1rem;
 }
 
-.seccion ul {
+/* Una tarjeta nunca empuja el ancho de la pantalla: lo que no entra se acomoda adentro. */
+.tablero > * {
+  min-width: 0;
+}
+
+/* El comprobante: un bloque con troquel en el pie. */
+
+.comprobante {
+  position: relative;
+  background: var(--vidrio);
+  border: 1px solid var(--vidrio-borde);
+  border-radius: var(--radio);
+  padding: 1.15rem 1.15rem 1rem;
+}
+
+.comprobante.tinte-violeta {
+  background: linear-gradient(180deg, rgb(149 81 254 / 0.16), var(--vidrio) 75%);
+}
+
+.comprobante.tinte-menta {
+  background: linear-gradient(180deg, rgb(76 216 134 / 0.13), var(--vidrio) 75%);
+}
+
+.comprobante-titulo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 1rem;
+  font-weight: 650;
+  margin-bottom: 0.75rem;
+}
+
+.contador {
+  font: 500 0.8rem var(--numeros);
+  color: var(--suave);
+}
+
+.comprobante-pie {
+  position: relative;
+  margin: 1rem 0 -0.2rem;
+  padding: 0.75rem 0 0;
+  border-top: 1.5px dashed var(--apagado);
+}
+
+.comprobante-pie a {
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.vacio {
+  color: var(--suave);
+  margin: 0.25rem 0;
+}
+
+/* El total grande, en la grotesca ancha. */
+
+.gastado-arriba {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.monto-grande {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+  margin: 0;
+  font-weight: 750;
+  font-stretch: 125%;
+  font-size: clamp(1.6rem, 7.6vw, 2.5rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.monto-grande .moneda {
+  color: var(--suave);
+  font-weight: 500;
+  font-size: 0.55em;
+}
+
+/* Meses anteriores: barras que se tocan. */
+
+.meses {
+  display: flex;
+  gap: 0.3rem;
+  flex: none;
+}
+
+.mes-barra {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--suave);
+  cursor: pointer;
+}
+
+.mes-barra-pista {
+  display: flex;
+  align-items: flex-end;
+  width: 0.9rem;
+  height: 3.4rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.05);
+  overflow: hidden;
+}
+
+.mes-barra-pista span {
+  width: 100%;
+  border-radius: 999px;
+  background: var(--apagado);
+  transition: background 160ms ease-out;
+}
+
+.mes-barra:hover .mes-barra-pista span {
+  background: var(--suave);
+}
+
+.mes-barra[aria-current="true"] {
+  color: var(--violeta);
+}
+
+.mes-barra[aria-current="true"] .mes-barra-pista span {
+  background: var(--violeta);
+}
+
+.mes-barra-inicial {
+  font: 600 0.65rem var(--numeros);
+}
+
+/* El renglón: concepto, puntos guía, monto y sello. */
+
+.renglones {
   list-style: none;
   margin: 0;
   padding: 0;
-  background: var(--superficie);
-  border: 1px solid var(--borde);
-  border-radius: 0.75rem;
-  overflow: hidden;
+  display: grid;
+  gap: 0.55rem;
 }
 
-.fila {
+.renglon {
+  display: grid;
+  grid-template-columns: auto minmax(0, max-content) minmax(1rem, 1fr) auto auto;
+  align-items: baseline;
+  column-gap: 0.5rem;
+  font-size: 0.92rem;
+}
+
+.renglon.sin-filete {
+  grid-template-columns: minmax(0, max-content) minmax(1rem, 1fr) auto auto;
+}
+
+.renglon.sin-filete > * {
+  grid-column: auto;
+}
+
+.renglon-concepto {
+  grid-column: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.renglon-guia {
+  grid-column: 3;
+  border-bottom: 2px dotted var(--apagado);
+  translate: 0 -0.25em;
+}
+
+.renglon-monto {
+  grid-column: 4;
+  font: 500 0.9rem var(--numeros);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.renglon .sello {
+  grid-column: 5;
+}
+
+.renglon-fuerte {
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--borde);
+  font-weight: 650;
+}
+
+.renglon-fuerte .renglon-monto {
+  font-weight: 700;
+}
+
+.filete {
+  grid-column: 1;
+  align-self: center;
+  width: 0.75rem;
+  height: 3px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.filete-punteado {
+  background: repeating-linear-gradient(90deg, currentColor 0 3px, transparent 3px 5px);
+}
+
+.sello {
+  font: 700 0.62rem/1 var(--numeros);
+  letter-spacing: 0.04em;
+  padding: 0.28rem 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.tono-mal {
+  color: var(--rojo);
+}
+
+.tono-ojo {
+  color: var(--ambar);
+}
+
+.tono-bien {
+  color: var(--menta);
+}
+
+.tono-neutro {
+  color: var(--suave);
+}
+
+/* En qué se fue: una barra de composición y la leyenda debajo. */
+
+.composicion {
   display: flex;
+  gap: 3px;
+  height: 0.7rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.composicion span {
+  border-radius: 999px;
+  min-width: 0.4rem;
+}
+
+.leyenda {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.leyenda li {
+  display: grid;
+  grid-template-columns: 0.6rem minmax(0, 1fr) auto 3.4rem;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.92rem;
+}
+
+.leyenda-punto {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+}
+
+.leyenda-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leyenda-monto {
+  font: 500 0.88rem var(--numeros);
+  white-space: nowrap;
+}
+
+.leyenda-porcentaje {
+  text-align: right;
+  color: var(--suave);
+  font: 500 0.82rem var(--numeros);
+}
+
+.barras {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.barras li {
+  display: grid;
+  grid-template-columns: minmax(0, 8rem) 1fr 3.2rem;
+  align-items: center;
   gap: 0.75rem;
-  align-items: flex-start;
-  padding: 0.75rem;
-}
-
-.fila + .fila,
-.categoria + .categoria {
-  border-top: 1px solid var(--borde);
-}
-
-.fila p {
-  margin: 0.1rem 0 0;
-  color: var(--suave);
   font-size: 0.9rem;
-  overflow-wrap: anywhere;
 }
 
-.estado {
-  flex: none;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-  background: var(--neutro-fondo);
+.barras-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Rojo: hay que hacer algo. Amarillo: mirar. Verde: resuelto. */
-.estado-sin-debitar,
-.estado-falta,
-.estado-impago,
-.estado-repetida,
-.estado-tope {
-  color: var(--mal);
-  background: var(--mal-fondo);
-}
-
-.estado-más-caro,
-.estado-más-barato,
-.estado-sin-plan,
-.estado-otro-número,
-.estado-parcial,
-.estado-avisado {
-  color: var(--ojo);
-  background: var(--ojo-fondo);
-}
-
-.estado-confirmado,
-.estado-nada-que-pagar {
-  color: var(--bien);
-  background: var(--bien-fondo);
-}
-
-.categoria {
-  padding: 0.65rem 0.75rem;
-}
-
-.categoria-texto {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.95rem;
-}
-
-.categoria-texto span:last-child {
-  color: var(--suave);
-  white-space: nowrap;
-}
-
-.barra {
-  height: 0.4rem;
-  margin-top: 0.35rem;
+.barras-pista {
+  height: 0.45rem;
   border-radius: 999px;
-  background: var(--neutro-fondo);
+  background: var(--superficie-2);
   overflow: hidden;
 }
 
-.barra div {
+.barras-pista span {
+  display: block;
   height: 100%;
-  background: var(--acento);
   border-radius: 999px;
+  background: var(--menta);
 }
 
-/* Barra de abajo: al alcance del pulgar. El padding de .pagina deja lugar para que no tape nada. */
-
-.pagina {
-  padding-bottom: 5.5rem;
-}
-
-.barra-abajo {
-  position: fixed;
-  inset: auto 0 0 0;
-  display: flex;
-  justify-content: center;
-  gap: 0.25rem;
-  padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
-  background: var(--superficie);
-  border-top: 1px solid var(--borde);
-}
-
-.barra-abajo a {
-  flex: 1;
-  max-width: 10rem;
-  text-align: center;
-  padding: 0.6rem 0.5rem;
-  border-radius: 0.6rem;
+.barras-valor {
+  text-align: right;
   color: var(--suave);
-  text-decoration: none;
-  font-weight: 600;
+  font: 500 0.85rem var(--numeros);
 }
 
-.barra-abajo a[aria-current="page"] {
-  color: var(--acento);
-  background: var(--bien-fondo);
-}
-
-/* Formularios. */
+/* Formularios (Cargar). */
 
 .pestanias {
   display: flex;
   gap: 0.25rem;
-  margin: 1rem 0;
+  margin: 0 0 1rem;
   padding: 0.25rem;
-  background: var(--neutro-fondo);
-  border-radius: 0.75rem;
+  background: var(--superficie-2);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
 }
 
 .pestania {
@@ -278,29 +569,33 @@ input[type="month"] {
   font-weight: 600;
   padding: 0.6rem;
   border: 0;
-  border-radius: 0.6rem;
+  border-radius: 999px;
   background: transparent;
   color: var(--suave);
   cursor: pointer;
 }
 
 .pestania.activa {
-  background: var(--superficie);
-  color: var(--texto);
+  background: var(--violeta);
+  color: #fff;
 }
 
 .formulario {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.9rem;
+  background: var(--vidrio);
+  border: 1px solid var(--vidrio-borde);
+  border-radius: var(--radio);
+  padding: 1.15rem;
 }
 
 .formulario label,
 .moneda legend {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.9rem;
+  gap: 0.35rem;
+  font-size: 0.85rem;
   color: var(--suave);
 }
 
@@ -308,12 +603,23 @@ input[type="month"] {
 .formulario select {
   font: inherit;
   color: var(--texto);
-  background: var(--superficie);
+  background: var(--superficie-2);
   border: 1px solid var(--borde);
-  border-radius: 0.5rem;
-  padding: 0.6rem 0.75rem;
-  min-height: 2.75rem;
+  border-radius: 14px;
+  padding: 0.65rem 0.85rem;
+  min-height: 2.9rem;
   width: 100%;
+  caret-color: var(--violeta);
+}
+
+.formulario input::placeholder {
+  color: #8d868d;
+}
+
+.formulario input[inputmode="decimal"] {
+  font: 700 1.6rem var(--letra);
+  font-stretch: 125%;
+  font-variant-numeric: tabular-nums;
 }
 
 .dos-columnas {
@@ -331,23 +637,20 @@ input[type="month"] {
   flex-wrap: wrap;
 }
 
-.moneda legend {
-  margin-bottom: 0.3rem;
-}
-
 .moneda label {
   flex-direction: row;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   color: var(--texto);
   font-size: 1rem;
 }
 
 .avisos {
-  background: var(--ojo-fondo);
-  color: var(--ojo);
-  border-radius: 0.75rem;
-  padding: 0.75rem;
+  background: var(--ambar-fondo);
+  color: var(--ambar);
+  border: 1px solid var(--ambar);
+  border-radius: 16px;
+  padding: 0.85rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -355,23 +658,30 @@ input[type="month"] {
 
 .avisos p {
   margin: 0;
+  font-weight: 600;
 }
 
 button.principal,
 button.secundario,
 button.peligro {
   font: inherit;
-  font-weight: 600;
-  border-radius: 0.6rem;
-  padding: 0.6rem 1rem;
-  min-height: 2.75rem;
+  font-weight: 650;
+  border-radius: 999px;
+  padding: 0.65rem 1.1rem;
+  min-height: 2.9rem;
   cursor: pointer;
+  transition: filter 160ms ease-out;
 }
 
 button.principal {
-  background: var(--acento);
-  color: var(--superficie);
+  background: var(--violeta);
+  color: #fff;
   border: 0;
+  box-shadow: 0 8px 20px -8px rgb(149 81 254 / 0.8);
+}
+
+button.principal:hover {
+  filter: brightness(1.08);
 }
 
 button.principal:disabled {
@@ -386,25 +696,56 @@ button.secundario {
 }
 
 button.peligro {
-  background: var(--mal);
-  color: var(--superficie);
+  background: var(--rojo-punto);
+  color: #fff;
   border: 0;
 }
 
 .mensaje {
-  border-radius: 0.6rem;
-  padding: 0.6rem 0.75rem;
+  border-radius: 14px;
+  padding: 0.7rem 0.9rem;
   margin: 1rem 0 0;
 }
 
 .mensaje-bien {
-  background: var(--bien-fondo);
-  color: var(--bien);
+  background: var(--menta-fondo);
+  color: var(--menta);
 }
 
 .mensaje-error {
-  background: var(--mal-fondo);
-  color: var(--mal);
+  background: var(--rojo-fondo);
+  color: var(--rojo);
+}
+
+.seccion {
+  margin-top: 1.5rem;
+}
+
+.seccion h2 {
+  font-size: 1rem;
+  font-weight: 650;
+  margin-bottom: 0.6rem;
+}
+
+.seccion ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--vidrio);
+  border: 1px solid var(--vidrio-borde);
+  border-radius: var(--radio);
+  overflow: hidden;
+}
+
+.fila {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem 1rem;
+}
+
+.fila + .fila {
+  border-top: 1.5px dashed var(--borde);
 }
 
 .fila-texto {
@@ -412,9 +753,146 @@ button.peligro {
   min-width: 0;
 }
 
+.fila-texto strong {
+  font: 600 0.95rem var(--numeros);
+}
+
+.fila p {
+  margin: 0.15rem 0 0;
+  color: var(--suave);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
 .confirmar {
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+@media (max-width: 859px) {
+  .renglon:has(.sello) {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "filete concepto concepto concepto"
+      ". guia monto sello";
+    row-gap: 0.3rem;
+  }
+
+  .renglon.sin-filete:has(.sello) {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "concepto concepto concepto"
+      "guia monto sello";
+  }
+
+  .renglon:has(.sello) > .filete {
+    grid-area: filete;
+  }
+
+  .renglon:has(.sello) > .renglon-concepto {
+    grid-area: concepto;
+    white-space: normal;
+  }
+
+  .renglon:has(.sello) > .renglon-guia {
+    grid-area: guia;
+  }
+
+  .renglon:has(.sello) > .renglon-monto {
+    grid-area: monto;
+  }
+
+  .renglon:has(.sello) > .sello {
+    grid-area: sello;
+  }
+
+  .renglones {
+    gap: 0.85rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
+
+/* Computadora: el mismo menú, arriba; el tablero en dos columnas. */
+
+@media (min-width: 860px) {
+  .app {
+    padding: 0 2rem;
+  }
+
+  .barra {
+    padding: 1.4rem 0 1rem;
+    border-bottom: 1px solid var(--borde);
+  }
+
+  .navegacion {
+    position: static;
+    translate: none;
+    box-shadow: none;
+  }
+
+  .nav-item {
+    display: flex;
+    gap: 0.45rem;
+    width: auto;
+    height: 2.5rem;
+    padding: 0 1rem;
+    background: transparent;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .nav-item span {
+    position: static;
+    width: auto;
+    height: auto;
+    clip-path: none;
+  }
+
+  .pagina {
+    padding-bottom: 3rem;
+  }
+
+  .mes {
+    grid-template-columns: auto auto auto;
+    justify-content: start;
+    margin: 1.5rem 0 0.25rem;
+  }
+
+  .mes-nombre {
+    font-size: 1.9rem;
+    font-stretch: 125%;
+    font-weight: 750;
+    text-align: left;
+  }
+
+  .importado {
+    text-align: left;
+  }
+
+  .tablero {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "gastado atender"
+      "categorias atender";
+    align-items: start;
+  }
+
+  .gastado {
+    grid-area: gastado;
+  }
+
+  .atender {
+    grid-area: atender;
+  }
+
+  .categorias {
+    grid-area: categorias;
+  }
 }

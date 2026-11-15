@@ -2,15 +2,18 @@
 import shutil
 import tempfile
 from dataclasses import asdict
-from datetime import date
+from datetime import date, datetime
+from decimal import Decimal
+from uuid import uuid4
 from pathlib import Path
+from typing import Literal
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Response, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from conciliador import base, cotizaciones, esquemas, importar, manual, plan, reporte, revisar
+from conciliador import base, cotizaciones, esquemas, importar, inversiones, manual, plan, precios, reporte, revisar
 
 MAXIMO_ARCHIVO = 20 * 1024 * 1024  # 20 MB: un resumen pesa menos de 1.
 MINIMO_REGLA = 3  # Una regla "Pa" alcanzaría a Pago, Pasaje, Panadería...
@@ -25,6 +28,7 @@ def crear_app(
     entrada: Path = Path("entrada"),
     clave_nacion: str = "",
     traer_cotizaciones=cotizaciones.traer,
+    traer_precio=precios._json,
 ) -> FastAPI:
     """Una app por base: los tests usan una temporal y el comando `web`, la real.
 
@@ -38,6 +42,13 @@ def crear_app(
         try:
             return asdict(reporte.armar(motor, mes))
         except ValueError as error:  # Un mes mal escrito es un error de quien llama.
+            raise HTTPException(status_code=422, detail=str(error))
+
+    @app.get("/api/historial/{mes}", response_model=list[esquemas.MesHistorial])
+    def ver_historial(mes: str, meses: int = 6):
+        try:
+            return reporte.historial(motor, mes, meses)
+        except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error))
 
     @app.post(
@@ -103,6 +114,106 @@ def crear_app(
         base.resolver_pendiente(motor, movimiento_id, categoria, regla)
         return Response(status_code=204)
 
+    @app.get("/api/plan", response_model=esquemas.Plan)
+    def ver_plan():
+        return base.plan_con_ids(motor)
+
+    @app.get("/api/plan.csv", response_class=PlainTextResponse)
+    def exportar_plan():
+        leido = base.leer_plan(motor)
+        return PlainTextResponse(
+            plan.a_csv(leido.fijos, leido.cuotas),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="plan.csv"'},
+        )
+
+    def _guardar(tabla: str, item_id: int | None, construir):
+        try:
+            item = construir()
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+        try:
+            guardado = base.guardar_del_plan(motor, tabla, item, item_id)
+        except base.ConceptoRepetido as error:
+            raise HTTPException(status_code=409, detail=str(error))
+        if guardado is None:
+            raise HTTPException(status_code=404, detail="no existe en el plan")
+        return {"id": guardado}
+
+    def _fijo(e: esquemas.FijoEntrada):
+        return lambda: plan.fijo_desde(e.concepto, e.texto, e.monto, e.moneda, e.dia, e.categoria)
+
+    def _cuota(e: esquemas.CuotaEntrada):
+        return lambda: plan.cuota_desde(e.concepto, e.texto, e.monto, e.moneda, e.cantidad, e.primer_mes, e.categoria)
+
+    @app.post("/api/plan/fijos", status_code=201, response_model=esquemas.Guardado)
+    def crear_fijo(entrada: esquemas.FijoEntrada):
+        return _guardar("fijos", None, _fijo(entrada))
+
+    @app.put("/api/plan/fijos/{item_id}", response_model=esquemas.Guardado)
+    def editar_fijo(item_id: int, entrada: esquemas.FijoEntrada):
+        return _guardar("fijos", item_id, _fijo(entrada))
+
+    @app.post("/api/plan/cuotas", status_code=201, response_model=esquemas.Guardado)
+    def crear_cuota(entrada: esquemas.CuotaEntrada):
+        return _guardar("cuotas", None, _cuota(entrada))
+
+    @app.put("/api/plan/cuotas/{item_id}", response_model=esquemas.Guardado)
+    def editar_cuota(item_id: int, entrada: esquemas.CuotaEntrada):
+        return _guardar("cuotas", item_id, _cuota(entrada))
+
+    @app.delete("/api/plan/{tabla}/{item_id}", status_code=204)
+    def borrar_del_plan(tabla: Literal["fijos", "cuotas"], item_id: int):
+        if not base.borrar_del_plan(motor, tabla, item_id):
+            raise HTTPException(status_code=404, detail="no existe en el plan")
+        return Response(status_code=204)
+
+    @app.get("/api/inversiones/{mes}", response_model=esquemas.Inversiones)
+    def ver_inversiones(mes: str):
+        if not reporte.MES.match(mes):
+            raise HTTPException(status_code=422, detail=f"mes inválido: {mes!r}")
+        return armar_inversiones(motor, mes)
+
+    @app.post("/api/operaciones", status_code=201, response_model=esquemas.Guardado)
+    def cargar_operacion(nueva: esquemas.OperacionNueva):
+        try:
+            if nueva.fecha > date.today():
+                raise ValueError("la fecha es futura")
+            activo = nueva.activo.strip().upper()
+            if not activo or len(activo) > 20:
+                raise ValueError("falta el activo, por ejemplo BTC o NVDA")
+            cantidad = inversiones.decimal_desde(nueva.cantidad, "cantidad")
+            precio = inversiones.decimal_desde(nueva.precio, "precio")
+            if cantidad == 0 or precio == 0:
+                raise ValueError("la cantidad y el precio tienen que ser mayores que 0")
+            op = inversiones.Operacion(
+                0, datetime.combine(nueva.fecha, datetime.min.time()), activo, nueva.tipo_activo, nueva.lado,
+                cantidad, precio, inversiones.decimal_desde(nueva.comision or "0", "comisión"),
+            )
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+        base.guardar_operacion(motor, "manual", uuid4().hex, op)
+        return {"id": max(o.id for o in base.operaciones(motor))}
+
+    @app.delete("/api/operaciones/{operacion_id}", status_code=204)
+    def borrar_operacion(operacion_id: int):
+        if not base.borrar_operacion(motor, operacion_id):
+            raise HTTPException(status_code=404, detail="no existe esa operación")
+        return Response(status_code=204)
+
+    @app.post("/api/precios", response_model=esquemas.PreciosActualizados)
+    def actualizar_precios():
+        abiertas = inversiones.calcular(base.operaciones(motor), {}).posiciones
+        tipos = {p.activo: p.tipo_activo for p in abiertas}
+        nuevos, errores = precios.actualizar(tipos, traer_precio)
+        origen = {a: ("binance" if tipos[a] == "cripto" else "yahoo") for a in nuevos}
+        base.guardar_precios(motor, nuevos, origen, datetime.now())
+        return {"actualizados": len(nuevos), "errores": errores}
+
+    @app.get("/api/categorias", response_model=list[str])
+    def ver_categorias():
+        return base.categorias(motor)
+
     @app.get("/api/varios", response_model=list[esquemas.GrupoVarios])
     def ver_varios():
         return revisar.agrupar_varios(motor)
@@ -142,6 +253,48 @@ def esquema_openapi() -> dict:
     """El esquema de la API, para generar los tipos de TypeScript. Usa una base descartable."""
     with tempfile.TemporaryDirectory() as carpeta:
         return crear_app(Path(carpeta) / "esquema.db").openapi()
+
+
+def armar_inversiones(motor: base.Engine, mes: str) -> dict:
+    """Cartera de hoy, y lo realizado, las comisiones y las operaciones del mes pedido."""
+    ops = base.operaciones(motor)
+    guardados, precios_al = base.precios(motor)
+    resultado = inversiones.calcular(ops, guardados)
+    c = inversiones.a_centavos
+    abiertas = {p.activo for p in resultado.posiciones}
+    del_mes = sorted(inversiones.por_mes(ops).get(mes, []), key=lambda o: (o.fecha_hora, o.id), reverse=True)
+    con_precio = [p for p in resultado.posiciones if p.valor is not None]
+    return {
+        "mes": mes,
+        "cartera_centavos": c(sum((p.valor for p in con_precio), Decimal(0))),
+        "invertido_centavos": c(sum((p.costo for p in resultado.posiciones), Decimal(0))),
+        "no_realizado_centavos": c(sum((p.no_realizado for p in con_precio), Decimal(0))),
+        "realizado_mes_centavos": c(sum((resultado.realizado.get(o.id, Decimal(0)) for o in del_mes), Decimal(0))),
+        "comisiones_mes_centavos": c(sum((o.comision for o in del_mes), Decimal(0))),
+        "operaciones_mes": len(del_mes),
+        "sin_precio": [p.activo for p in resultado.posiciones if p.precio is None],
+        "precios_al": precios_al,
+        "avisos": resultado.avisos,
+        "posiciones": [
+            {
+                "activo": p.activo, "tipo_activo": p.tipo_activo, "cantidad": inversiones.formato(p.cantidad),
+                "costo_promedio": inversiones.formato(p.costo_promedio.quantize(Decimal("0.0001"))),
+                "invertido_centavos": c(p.costo),
+                "precio": None if p.precio is None else inversiones.formato(p.precio),
+                "valor_centavos": c(p.valor), "no_realizado_centavos": c(p.no_realizado),
+            }
+            for p in resultado.posiciones
+        ],
+        "operaciones": [
+            {
+                "id": o.id, "fecha": o.fecha_hora.date(), "activo": o.activo, "tipo_activo": o.tipo_activo,
+                "lado": o.lado, "cantidad": inversiones.formato(o.cantidad), "precio": inversiones.formato(o.precio),
+                "comision_centavos": c(o.comision), "resultado_centavos": c(resultado.realizado.get(o.id)),
+                "abierta": o.lado == "compra" and o.activo in abiertas,
+            }
+            for o in del_mes
+        ],
+    }
 
 
 def nombre_seguro(nombre: str | None) -> str | None:

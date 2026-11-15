@@ -1,0 +1,107 @@
+/* Inversiones. Usa las variables de estilos.css. */
+
+.chip-variacion {
+  display: inline-block;
+  margin: 0.6rem 0 0.9rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: rgb(76 216 134 / 0.12);
+  font: 600 0.85rem var(--numeros);
+}
+
+.chip-variacion.tono-mal {
+  background: rgb(226 98 94 / 0.12);
+}
+
+.pie-precios {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pie-precios .nota {
+  margin: 0;
+}
+
+.pie-precios .boton-texto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.girando {
+  animation: girar 900ms linear infinite;
+}
+
+@keyframes girar {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.iniciales {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--vidrio-borde);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--suave);
+  font: 700 0.72rem var(--numeros);
+}
+
+.item-derecha {
+  display: grid;
+  justify-items: end;
+  gap: 0.2rem;
+  text-align: right;
+}
+
+.item > .filete {
+  flex: none;
+  align-self: center;
+}
+
+.dos-cifras {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.dos-cifras > div + div {
+  padding-left: 1rem;
+  border-left: 1px solid var(--vidrio-borde);
+}
+
+.cifra {
+  margin: 0.2rem 0 0;
+  font-weight: 750;
+  font-stretch: 125%;
+  font-size: clamp(1.15rem, 5vw, 1.6rem);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.inversion-vacia {
+  margin-top: 1rem;
+}
+
+.pagina > .segmentado {
+  margin-bottom: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .girando {
+    animation: none;
+  }
+}
+
+@media (min-width: 860px) {
+  .pagina > .segmentado {
+    max-width: 22rem;
+  }
+}

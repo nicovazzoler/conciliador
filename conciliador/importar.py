@@ -18,7 +18,9 @@ class Informe:
 
 def importar_carpeta(carpeta: Path, motor: base.Engine, clave_nacion: str = "") -> list[Informe]:
     archivos = sorted(p for p in carpeta.iterdir() if p.is_file() and not p.name.startswith("."))
-    informes = [importar_archivo(archivo, motor, clave_nacion) for archivo in archivos]
+    # Con un plan ya cargado, plan.csv no se vuelve a leer solo: pisaría lo editado en la app.
+    reemplazar = not base.hay_plan(motor)
+    informes = [importar_archivo(archivo, motor, clave_nacion, reemplazar) for archivo in archivos]
     base.aplicar_reglas(motor)
     return informes
 
@@ -35,8 +37,14 @@ def actualizar_cotizaciones(motor: base.Engine, traer=cotizaciones.traer) -> str
     return aviso
 
 
-def importar_archivo(ruta: Path, motor: base.Engine, clave_nacion: str = "") -> Informe:
+def importar_archivo(
+    ruta: Path, motor: base.Engine, clave_nacion: str = "", reemplazar_plan: bool = True
+) -> Informe:
     informe = Informe(ruta.name)
+    if ruta.name == plan.ARCHIVO and not reemplazar_plan:
+        informe.reconocido = True
+        informe.problemas = ["el plan ya está en la app y se edita desde ahí; para reemplazarlo entero, subí plan.csv desde Importar"]
+        return informe
     if ruta.name == plan.ARCHIVO:
         leido = plan.leer(ruta)
         base.reemplazar_plan(motor, leido)
