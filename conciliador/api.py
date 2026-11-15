@@ -8,6 +8,7 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from conciliador import base, cotizaciones, esquemas, importar, manual, plan, reporte, revisar
 
@@ -16,6 +17,7 @@ MINIMO_REGLA = 3  # Una regla "Pa" alcanzaría a Pago, Pasaje, Panadería...
 
 HOST = "127.0.0.1"  # Sin login: solo esta máquina puede entrar.
 PUERTO = 8000
+PAGINA = Path(__file__).parent.parent / "web" / "dist"
 
 
 def crear_app(
@@ -129,7 +131,17 @@ def crear_app(
             "sin_usd": base.contar_sin_usd(motor),
         }
 
+    # La página ya armada (`npm run build`). Va al final para que /api/... no caiga acá.
+    if PAGINA.is_dir():
+        app.mount("/", StaticFiles(directory=PAGINA, html=True), name="pagina")
+
     return app
+
+
+def esquema_openapi() -> dict:
+    """El esquema de la API, para generar los tipos de TypeScript. Usa una base descartable."""
+    with tempfile.TemporaryDirectory() as carpeta:
+        return crear_app(Path(carpeta) / "esquema.db").openapi()
 
 
 def nombre_seguro(nombre: str | None) -> str | None:

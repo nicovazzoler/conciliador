@@ -1,0 +1,229 @@
+/* Pensado primero para el celular: una columna, letra legible, toques grandes. */
+
+:root {
+  --fondo: #f6f5f2;
+  --superficie: #ffffff;
+  --texto: #1c1b19;
+  --suave: #6b6860;
+  --borde: #e4e1da;
+  --acento: #1f6f5c;
+  --mal: #b3261e;
+  --mal-fondo: #fbe9e7;
+  --ojo: #8a5a00;
+  --ojo-fondo: #fdf0d5;
+  --bien: #1f6f5c;
+  --bien-fondo: #e3f1ec;
+  --neutro-fondo: #eceae5;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #151513;
+    --superficie: #1f1f1c;
+    --texto: #ecebe6;
+    --suave: #a19e95;
+    --borde: #34332f;
+    --acento: #6cc3a8;
+    --mal: #f2a59f;
+    --mal-fondo: #3b1f1c;
+    --ojo: #f0c674;
+    --ojo-fondo: #3a2d12;
+    --bien: #6cc3a8;
+    --bien-fondo: #17302a;
+    --neutro-fondo: #2a2926;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.pagina {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 1rem 1rem 3rem;
+}
+
+.encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  text-transform: capitalize;
+}
+
+h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  color: var(--suave);
+  font-weight: 600;
+}
+
+input[type="month"] {
+  font: inherit;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--borde);
+  border-radius: 0.5rem;
+  background: var(--superficie);
+  color: var(--texto);
+  min-height: 2.75rem;
+}
+
+.totales {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.total {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.total span {
+  color: var(--suave);
+  font-size: 0.85rem;
+}
+
+.total strong {
+  font-size: 1.15rem;
+}
+
+.total.destacado {
+  border-color: var(--acento);
+}
+
+.nota {
+  color: var(--suave);
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+}
+
+.nota.aviso {
+  color: var(--ojo);
+}
+
+.nota.error {
+  color: var(--mal);
+}
+
+.seccion {
+  margin-top: 1.5rem;
+}
+
+.seccion ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.fila {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.75rem;
+}
+
+.fila + .fila,
+.categoria + .categoria {
+  border-top: 1px solid var(--borde);
+}
+
+.fila p {
+  margin: 0.1rem 0 0;
+  color: var(--suave);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.estado {
+  flex: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: var(--neutro-fondo);
+  white-space: nowrap;
+}
+
+/* Rojo: hay que hacer algo. Amarillo: mirar. Verde: resuelto. */
+.estado-sin-debitar,
+.estado-falta,
+.estado-impago,
+.estado-repetida,
+.estado-tope {
+  color: var(--mal);
+  background: var(--mal-fondo);
+}
+
+.estado-más-caro,
+.estado-más-barato,
+.estado-sin-plan,
+.estado-otro-número,
+.estado-parcial,
+.estado-avisado {
+  color: var(--ojo);
+  background: var(--ojo-fondo);
+}
+
+.estado-confirmado,
+.estado-nada-que-pagar {
+  color: var(--bien);
+  background: var(--bien-fondo);
+}
+
+.categoria {
+  padding: 0.65rem 0.75rem;
+}
+
+.categoria-texto {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.categoria-texto span:last-child {
+  color: var(--suave);
+  white-space: nowrap;
+}
+
+.barra {
+  height: 0.4rem;
+  margin-top: 0.35rem;
+  border-radius: 999px;
+  background: var(--neutro-fondo);
+  overflow: hidden;
+}
+
+.barra div {
+  height: 100%;
+  background: var(--acento);
+  border-radius: 999px;
+}

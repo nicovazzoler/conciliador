@@ -44,7 +44,16 @@ def main() -> None:
     del_mes = comandos.add_parser("reporte", help="el reporte del mes")
     del_mes.add_argument("mes", help="por ejemplo 2026-11")
     comandos.add_parser("web", help="levanta la app web en http://127.0.0.1:8000")
+    comandos.add_parser("openapi", help="imprime el esquema de la API, para los tipos del front")
     argumentos = parser.parse_args()
+
+    if argumentos.comando == "openapi":
+        import json
+
+        from conciliador import api
+
+        print(json.dumps(api.esquema_openapi(), ensure_ascii=False, indent=2))
+        return
 
     ruta = Path(os.environ.get("CONCILIADOR_DB", "conciliador.db"))
     if argumentos.comando == "migrar":
