@@ -63,6 +63,7 @@ def agrupar_varios(motor: base.Engine) -> list[dict]:
             "total_centavos": -sum(g["monto_centavos"] for g in gastos),
             "ejemplo": gastos[0]["descripcion"],
             "plan_concepto": next((g["plan_concepto"] for g in gastos if g["plan_concepto"]), None),
+            "fuentes": sorted({g["fuente"] for g in gastos}),
         }
         for (_, moneda), gastos in grupos.items()
     ]

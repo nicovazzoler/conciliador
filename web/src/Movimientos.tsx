@@ -5,17 +5,12 @@ import { elegirCategoria, traerCategorias, traerMovimientos, type MovimientoDelM
 import { Comprobante } from "./comprobante";
 import { Segmentado } from "./controles";
 import { hoy, importe, mesActual, moverMes, nombreMes, plata } from "./formato";
+import { nombreFuente, siglaFuente } from "./fuentes";
 
 type Filtro = "todo" | "gastos" | "ingresos" | "otros";
 type Mensaje = { tipo: "bien" | "error"; texto: string } | null;
 
 const GASTOS = new Set(["consumo", "cuota", "impuesto"]);
-const FUENTES: Record<string, string> = {
-  mercado_pago: "Mercado Pago",
-  tarjeta_comafi: "Comafi",
-  tarjeta_nacion: "Nación",
-  manual: "A mano",
-};
 const TIPOS: Record<string, string> = {
   ingreso: "ingreso",
   transferencia_propia: "entre tus cuentas",
@@ -118,7 +113,7 @@ export function Movimientos({ mesInicial }: { mesInicial?: string }) {
             <option value="">Todas las fuentes</option>
             {fuentes.map((f) => (
               <option key={f} value={f}>
-                {FUENTES[f] ?? f}
+                {nombreFuente(f)}
               </option>
             ))}
           </select>
@@ -191,7 +186,7 @@ function FilaMovimiento({
   const [categoria, setCategoria] = useState(m.categoria_manual ? (m.categoria ?? "") : "");
   const esGasto = GASTOS.has(m.tipo);
   const detalle = [
-    FUENTES[m.fuente] ?? m.fuente,
+    nombreFuente(m.fuente, m.medio),
     esGasto ? m.categoria : TIPOS[m.tipo] ?? m.tipo,
     m.cuota ? `cuota ${m.cuota}` : null,
     m.categoria_manual ? "a mano" : null,
@@ -210,8 +205,8 @@ function FilaMovimiento({
   return (
     <li className={abierto ? "item movimiento abierto" : "item movimiento"}>
       <button type="button" className="movimiento-fila" onClick={alTocar} aria-expanded={abierto}>
-        <span className="iniciales" aria-hidden="true">
-          {iniciales(m.descripcion)}
+        <span className={`iniciales marca-${m.fuente}`} title={nombreFuente(m.fuente)} aria-hidden="true">
+          {siglaFuente(m.fuente)}
         </span>
         <span className="item-texto">
           <strong>{m.descripcion}</strong>
@@ -251,14 +246,6 @@ function FilaMovimiento({
       )}
     </li>
   );
-}
-
-function iniciales(texto: string): string {
-  const palabras = texto
-    .replace(/^(Transferencia (enviada|recibida)|Pago de servicio|Pago con QR|Pago)\s+/i, "")
-    .split(/[\s*]+/)
-    .filter((p) => /[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(p));
-  return ((palabras[0]?.[0] ?? "") + (palabras[1]?.[0] ?? "")).toUpperCase() || "·";
 }
 
 function nombreDia(fecha: string): string {

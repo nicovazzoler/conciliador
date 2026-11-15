@@ -142,6 +142,7 @@ class Pendiente(BaseModel):
     descripcion: str
     monto_centavos: int
     moneda: str
+    fuente: str  # mercado_pago, tarjeta_comafi, tarjeta_nacion o manual.
     sugerido: str  # El texto que se propone para la regla.
 
 
@@ -160,6 +161,7 @@ class GrupoVarios(BaseModel):
     total_centavos: int
     ejemplo: str
     plan_concepto: str | None  # Si el grupo es de un fijo o una cuota del plan.
+    fuentes: list[str]  # De dónde vienen los movimientos del grupo.
 
 
 class ReglaNueva(BaseModel):

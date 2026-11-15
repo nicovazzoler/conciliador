@@ -118,6 +118,7 @@ class Pendiente:
     descripcion: str
     monto_centavos: int
     moneda: str
+    fuente: str
 
 
 MIGRACIONES = Path(__file__).parent / "migraciones"
@@ -453,7 +454,7 @@ def pendientes(motor: Engine) -> list[Pendiente]:
             select(Movimiento).where(Movimiento.pendiente.is_(True)).order_by(Movimiento.fecha)
         )
         return [
-            Pendiente(f.id, f.fecha, f.descripcion, f.monto_centavos, f.moneda) for f in filas
+            Pendiente(f.id, f.fecha, f.descripcion, f.monto_centavos, f.moneda, f.fuente) for f in filas
         ]
 
 
@@ -498,6 +499,7 @@ def gastos_varios(motor: Engine) -> list[dict]:
                 "monto_centavos": f.monto_centavos,
                 "moneda": f.moneda,
                 "plan_concepto": f.plan_concepto,
+                "fuente": f.fuente,
             }
             for f in filas
         ]

@@ -390,3 +390,11 @@ def test_editar_y_borrar_una_regla_recalcula_lo_que_habia_categorizado(tmp_path)
     kiosco = next(m for m in cliente.get("/api/movimientos/2026-10").json()["movimientos"] if m["id"] == kiosco["id"])
     assert kiosco["categoria"] == "Gastos varios"
     assert cliente.delete(f"/api/reglas/{regla['id']}").status_code == 404
+
+
+def test_pendientes_y_grupos_dicen_de_donde_vienen(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    fuentes = {"mercado_pago", "tarjeta_comafi", "tarjeta_nacion", "manual"}
+    assert all(p["fuente"] in fuentes for p in cliente.get("/api/pendientes").json())
+    grupos = cliente.get("/api/varios").json()
+    assert grupos and all(g["fuentes"] and set(g["fuentes"]) <= fuentes for g in grupos)

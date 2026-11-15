@@ -180,3 +180,15 @@
     max-width: 36rem;
   }
 }
+
+.iniciales.marca-mercado_pago {
+  color: var(--texto);
+  border-color: rgb(149 81 254 / 0.45);
+}
+
+.iniciales.marca-tarjeta_comafi,
+.iniciales.marca-tarjeta_nacion {
+  color: var(--texto);
+  border-style: dashed;
+  border-color: rgb(255 255 255 / 0.3);
+}

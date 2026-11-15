@@ -720,6 +720,8 @@ export interface components {
             ejemplo: string;
             /** Plan Concepto */
             plan_concepto: string | null;
+            /** Fuentes */
+            fuentes: string[];
         };
         /** Guardado */
         Guardado: {
@@ -963,6 +965,8 @@ export interface components {
             monto_centavos: number;
             /** Moneda */
             moneda: string;
+            /** Fuente */
+            fuente: string;
             /** Sugerido */
             sugerido: string;
         };
