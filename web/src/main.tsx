@@ -6,6 +6,7 @@ import { App } from "./App";
 import "./estilos.css";
 import "./pantallas.css";
 import "./plan.css";
+import "./inversiones.css";
 
 createRoot(document.getElementById("raiz")!).render(
   <StrictMode>

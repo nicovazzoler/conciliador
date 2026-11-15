@@ -52,3 +52,8 @@ export function inicialMes(mes: string): string {
 export function diaYMes(fecha: string): string {
   return `${fecha.slice(8, 10)}/${fecha.slice(5, 7)}`;
 }
+
+/** Un decimal que llega como texto ("2610.4545"), con miles y hasta `decimales` decimales. Solo para mostrar. */
+export function decimal(texto: string, decimales = 2): string {
+  return new Intl.NumberFormat("es-AR", { maximumFractionDigits: decimales }).format(Number(texto));
+}

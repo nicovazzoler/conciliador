@@ -149,3 +149,26 @@ export async function guardarCuota(cuota: CuotaEntrada, id?: number): Promise<vo
 export async function borrarDelPlan(tabla: "fijos" | "cuotas", id: number): Promise<void> {
   return leer<void>(await enviar(`/api/plan/${tabla}/${id}`, "DELETE"));
 }
+
+// Inversiones.
+
+export type Inversiones = Esquemas["Inversiones"];
+export type PosicionInversion = Esquemas["PosicionInversion"];
+export type OperacionInversion = Esquemas["OperacionInversion"];
+export type OperacionNueva = Esquemas["OperacionNueva"];
+
+export async function traerInversiones(mes: string): Promise<Inversiones> {
+  return leer<Inversiones>(await fetch(`/api/inversiones/${encodeURIComponent(mes)}`));
+}
+
+export async function cargarOperacion(operacion: OperacionNueva): Promise<void> {
+  await leer(await enviar("/api/operaciones", "POST", operacion));
+}
+
+export async function borrarOperacion(id: number): Promise<void> {
+  return leer<void>(await enviar(`/api/operaciones/${id}`, "DELETE"));
+}
+
+export async function actualizarPrecios(): Promise<{ actualizados: number; errores: string[] }> {
+  return leer(await enviar("/api/precios", "POST"));
+}

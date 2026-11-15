@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Cargar } from "./Cargar";
 import { Gastos } from "./Gastos";
 import { Importar } from "./Importar";
+import { Inversiones } from "./Inversiones";
 import { CalendarClock } from "lucide-react";
 import { Navegacion, SECCIONES, type Ruta } from "./Navegacion";
 import { Plan } from "./Plan";
@@ -45,19 +46,7 @@ export function App() {
       {ruta === "revisar" && <Revisar />}
       {ruta === "importar" && <Importar />}
       {ruta === "plan" && <Plan />}
-      {ruta === "inversiones" && <EnConstruccion titulo="Inversiones" detalle="Portafolio y Trading." />}
+      {ruta === "inversiones" && <Inversiones />}
     </div>
-  );
-}
-
-function EnConstruccion({ titulo, detalle }: { titulo: string; detalle: string }) {
-  return (
-    <main className="pagina">
-      <h1 className="titulo-pagina">{titulo}</h1>
-      <p className="vacio">
-        {detalle} Esta pantalla llega en el próximo paso; mientras tanto, la API ya la tiene y se puede usar desde la
-        terminal.
-      </p>
-    </main>
   );
 }

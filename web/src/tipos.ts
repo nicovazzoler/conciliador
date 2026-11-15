@@ -259,6 +259,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/inversiones/{mes}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ver Inversiones */
+        get: operations["ver_inversiones_api_inversiones__mes__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/operaciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cargar Operacion */
+        post: operations["cargar_operacion_api_operaciones_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/operaciones/{operacion_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Borrar Operacion */
+        delete: operations["borrar_operacion_api_operaciones__operacion_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/precios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Actualizar Precios */
+        post: operations["actualizar_precios_api_precios_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/categorias": {
         parameters: {
             query?: never;
@@ -580,6 +648,33 @@ export interface components {
             /** Problemas */
             problemas: string[];
         };
+        /** Inversiones */
+        Inversiones: {
+            /** Mes */
+            mes: string;
+            /** Cartera Centavos */
+            cartera_centavos: number;
+            /** Invertido Centavos */
+            invertido_centavos: number;
+            /** No Realizado Centavos */
+            no_realizado_centavos: number;
+            /** Realizado Mes Centavos */
+            realizado_mes_centavos: number;
+            /** Comisiones Mes Centavos */
+            comisiones_mes_centavos: number;
+            /** Operaciones Mes */
+            operaciones_mes: number;
+            /** Sin Precio */
+            sin_precio: string[];
+            /** Precios Al */
+            precios_al: string | null;
+            /** Avisos */
+            avisos: string[];
+            /** Posiciones */
+            posiciones: components["schemas"]["PosicionInversion"][];
+            /** Operaciones */
+            operaciones: components["schemas"]["OperacionInversion"][];
+        };
         /** Manual */
         Manual: {
             /** Id */
@@ -616,6 +711,61 @@ export interface components {
             dolares_centavos: number;
             /** Total Usd Centavos */
             total_usd_centavos: number;
+        };
+        /** OperacionInversion */
+        OperacionInversion: {
+            /** Id */
+            id: number;
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Activo */
+            activo: string;
+            /** Tipo Activo */
+            tipo_activo: string;
+            /** Lado */
+            lado: string;
+            /** Cantidad */
+            cantidad: string;
+            /** Precio */
+            precio: string;
+            /** Comision Centavos */
+            comision_centavos: number;
+            /** Resultado Centavos */
+            resultado_centavos: number | null;
+            /** Abierta */
+            abierta: boolean;
+        };
+        /** OperacionNueva */
+        OperacionNueva: {
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Activo */
+            activo: string;
+            /**
+             * Tipo Activo
+             * @enum {string}
+             */
+            tipo_activo: "cripto" | "accion";
+            /**
+             * Lado
+             * @enum {string}
+             */
+            lado: "compra" | "venta";
+            /** Cantidad */
+            cantidad: string;
+            /** Precio */
+            precio: string;
+            /**
+             * Comision
+             * @default 0
+             */
+            comision?: string;
         };
         /** PagoNuevo */
         PagoNuevo: {
@@ -659,6 +809,32 @@ export interface components {
             fijos: components["schemas"]["FijoPlan"][];
             /** Cuotas */
             cuotas: components["schemas"]["CuotaPlan"][];
+        };
+        /** PosicionInversion */
+        PosicionInversion: {
+            /** Activo */
+            activo: string;
+            /** Tipo Activo */
+            tipo_activo: string;
+            /** Cantidad */
+            cantidad: string;
+            /** Costo Promedio */
+            costo_promedio: string;
+            /** Invertido Centavos */
+            invertido_centavos: number;
+            /** Precio */
+            precio: string | null;
+            /** Valor Centavos */
+            valor_centavos: number | null;
+            /** No Realizado Centavos */
+            no_realizado_centavos: number | null;
+        };
+        /** PreciosActualizados */
+        PreciosActualizados: {
+            /** Actualizados */
+            actualizados: number;
+            /** Errores */
+            errores: string[];
         };
         /** ReglaGuardada */
         ReglaGuardada: {
@@ -1225,6 +1401,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ver_inversiones_api_inversiones__mes__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mes: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Inversiones"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cargar_operacion_api_operaciones_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperacionNueva"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guardado"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    borrar_operacion_api_operaciones__operacion_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                operacion_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    actualizar_precios_api_precios_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreciosActualizados"];
                 };
             };
         };
