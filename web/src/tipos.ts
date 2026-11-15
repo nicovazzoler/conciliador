@@ -274,18 +274,18 @@ export interface components {
              * @default ARS
              * @enum {string}
              */
-            moneda: "ARS" | "USD";
+            moneda?: "ARS" | "USD";
             /**
              * Medio
              * @default efectivo
              * @enum {string}
              */
-            medio: "efectivo" | "debito" | "transferencia";
+            medio?: "efectivo" | "debito" | "transferencia";
             /**
              * Confirmado
              * @default false
              */
-            confirmado: boolean;
+            confirmado?: boolean;
             /** Categoria */
             categoria?: string | null;
         };
@@ -393,7 +393,7 @@ export interface components {
              * @default ARS
              * @enum {string}
              */
-            moneda: "ARS" | "USD";
+            moneda?: "ARS" | "USD";
         };
         /** Pendiente */
         Pendiente: {
@@ -457,7 +457,7 @@ export interface components {
              * Cambio
              * @default false
              */
-            cambio: boolean;
+            cambio?: boolean;
         };
         /** Resumen */
         Resumen: {

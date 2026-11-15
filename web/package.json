@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "tipos": "PYTHONPATH=.. ${PYTHON:-python} -m conciliador openapi > openapi.json && openapi-typescript openapi.json -o src/tipos.ts"
+    "tipos": "PYTHONPATH=.. ${PYTHON:-python} -m conciliador openapi > openapi.json && openapi-typescript openapi.json --default-non-nullable false -o src/tipos.ts"
   },
   "dependencies": {
     "react": "^19.3.1",
