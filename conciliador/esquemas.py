@@ -162,3 +162,22 @@ class ReglaNueva(BaseModel):
 
 class ReglaGuardada(BaseModel):
     categorizados: int
+
+
+# Importar.
+
+
+class InformeArchivo(BaseModel):
+    archivo: str
+    reconocido: bool
+    nuevas: int
+    repetidas: int
+    errores: list[str]
+    problemas: list[str]  # Lo que no cerró al verificar: saldos o totales.
+
+
+class Importacion(BaseModel):
+    informes: list[InformeArchivo]
+    aviso_cotizaciones: str | None
+    pendientes: int
+    sin_usd: int
