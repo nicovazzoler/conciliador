@@ -24,13 +24,12 @@ export function Revisar() {
   const [mensaje, setMensaje] = useState<Mensaje>(null);
 
   const recargar = useCallback(() => {
-    Promise.all([traerPendientes(), traerVarios(), traerCategorias()])
-      .then(([p, g, c]) => {
-        setPendientes(p);
-        setGrupos(g);
-        setCategorias(c);
-      })
-      .catch((error: Error) => setMensaje({ tipo: "error", texto: error.message }));
+    // Cada pedido por su lado: si uno falla, lo demás se muestra igual.
+    const fallo = (que: string) => (error: Error) => setMensaje({ tipo: "error", texto: `No se pudieron traer ${que}: ${error.message}` });
+    traerPendientes().then(setPendientes).catch(fallo("los pendientes"));
+    traerVarios().then(setGrupos).catch(fallo("los grupos"));
+    // Las categorías solo ayudan a elegir: sin ellas se escribe a mano.
+    traerCategorias().then(setCategorias).catch(() => setCategorias([]));
   }, []);
   useEffect(recargar, [recargar]);
 
