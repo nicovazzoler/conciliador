@@ -2,13 +2,13 @@
    Primero el celular: una columna y el menú flotante abajo. Desde 860px, menú arriba y dos columnas. */
 
 :root {
-  --fondo: #0c070c;
-  --superficie: #221d22;
-  --superficie-2: #2b252b;
-  --borde: #3a333a;
+  --fondo: #120a18;
+  --superficie: #1e1622;
+  --superficie-2: #2a2130;
+  --borde: #3a3040;
   --texto: #f4f1f4;
   --suave: #a59ea5;
-  --apagado: #4a434a;
+  --apagado: #4d4255;
   --violeta: #9551fe;
   --violeta-fondo: #2e2440;
   --menta: #4cd886;
@@ -23,6 +23,13 @@
   --numeros: "JetBrains Mono Variable", ui-monospace, monospace;
   --radio: 22px;
   --sombra: 0 10px 30px -12px rgb(0 0 0 / 0.6);
+  --vidrio: rgb(255 255 255 / 0.035);
+  --vidrio-borde: rgb(255 255 255 / 0.07);
+  --cat-1: #9551fe;
+  --cat-2: #4cd886;
+  --cat-3: #f2b84b;
+  --cat-4: #f2789f;
+  --cat-5: #5eb8ff;
 
   color-scheme: dark;
   accent-color: var(--violeta);
@@ -38,11 +45,13 @@ html {
 
 body {
   margin: 0;
+  overflow-x: clip;
   min-height: 100dvh;
   color: var(--texto);
   font: 400 16px/1.45 var(--letra);
   background:
-    radial-gradient(60rem 28rem at 50% -12rem, rgb(149 81 254 / 0.16), transparent 70%),
+    radial-gradient(70rem 36rem at 50% -14rem, rgb(149 81 254 / 0.3), transparent 70%),
+    radial-gradient(48rem 30rem at 105% 110%, rgb(149 81 254 / 0.12), transparent 70%),
     var(--fondo);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
@@ -211,22 +220,27 @@ button.redondo:disabled {
   gap: 1rem;
 }
 
+/* Una tarjeta nunca empuja el ancho de la pantalla: lo que no entra se acomoda adentro. */
+.tablero > * {
+  min-width: 0;
+}
+
 /* El comprobante: un bloque con troquel en el pie. */
 
 .comprobante {
   position: relative;
-  background: var(--superficie);
+  background: var(--vidrio);
+  border: 1px solid var(--vidrio-borde);
   border-radius: var(--radio);
   padding: 1.15rem 1.15rem 1rem;
-  box-shadow: var(--sombra);
 }
 
 .comprobante.tinte-violeta {
-  background: linear-gradient(180deg, #30223d, var(--superficie) 70%);
+  background: linear-gradient(180deg, rgb(149 81 254 / 0.16), var(--vidrio) 75%);
 }
 
 .comprobante.tinte-menta {
-  background: linear-gradient(180deg, #264535, #28342f);
+  background: linear-gradient(180deg, rgb(76 216 134 / 0.13), var(--vidrio) 75%);
 }
 
 .comprobante-titulo {
@@ -245,29 +259,9 @@ button.redondo:disabled {
 
 .comprobante-pie {
   position: relative;
-  margin: 1rem -1.15rem -1rem;
-  padding: 0.8rem 1.15rem 0.9rem;
+  margin: 1rem 0 -0.2rem;
+  padding: 0.75rem 0 0;
   border-top: 1.5px dashed var(--apagado);
-}
-
-/* Las muescas del troquel, a los dos lados del corte. */
-.comprobante-pie::before,
-.comprobante-pie::after {
-  content: "";
-  position: absolute;
-  top: -0.6rem;
-  width: 1.2rem;
-  height: 1.2rem;
-  border-radius: 999px;
-  background: var(--fondo);
-}
-
-.comprobante-pie::before {
-  left: -0.6rem;
-}
-
-.comprobante-pie::after {
-  right: -0.6rem;
 }
 
 .comprobante-pie a {
@@ -284,6 +278,7 @@ button.redondo:disabled {
 
 .gastado-arriba {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
@@ -291,10 +286,14 @@ button.redondo:disabled {
 }
 
 .monto-grande {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
   margin: 0;
   font-weight: 750;
   font-stretch: 125%;
-  font-size: clamp(1.75rem, 8.5vw, 2.5rem);
+  font-size: clamp(1.6rem, 7.6vw, 2.5rem);
   line-height: 1;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -304,6 +303,7 @@ button.redondo:disabled {
 .monto-grande .moneda {
   color: var(--suave);
   font-weight: 500;
+  font-size: 0.55em;
 }
 
 /* Meses anteriores: barras que se tocan. */
@@ -328,8 +328,11 @@ button.redondo:disabled {
 .mes-barra-pista {
   display: flex;
   align-items: flex-end;
-  width: 0.8rem;
-  height: 3.2rem;
+  width: 0.9rem;
+  height: 3.4rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.05);
+  overflow: hidden;
 }
 
 .mes-barra-pista span {
@@ -371,6 +374,14 @@ button.redondo:disabled {
   align-items: baseline;
   column-gap: 0.5rem;
   font-size: 0.92rem;
+}
+
+.renglon.sin-filete {
+  grid-template-columns: minmax(0, max-content) minmax(1rem, 1fr) auto auto;
+}
+
+.renglon.sin-filete > * {
+  grid-column: auto;
 }
 
 .renglon-concepto {
@@ -445,7 +456,58 @@ button.redondo:disabled {
   color: var(--suave);
 }
 
-/* En qué se fue: barras horizontales. */
+/* En qué se fue: una barra de composición y la leyenda debajo. */
+
+.composicion {
+  display: flex;
+  gap: 3px;
+  height: 0.7rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.composicion span {
+  border-radius: 999px;
+  min-width: 0.4rem;
+}
+
+.leyenda {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.leyenda li {
+  display: grid;
+  grid-template-columns: 0.6rem minmax(0, 1fr) auto 3.4rem;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.92rem;
+}
+
+.leyenda-punto {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+}
+
+.leyenda-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leyenda-monto {
+  font: 500 0.88rem var(--numeros);
+  white-space: nowrap;
+}
+
+.leyenda-porcentaje {
+  text-align: right;
+  color: var(--suave);
+  font: 500 0.82rem var(--numeros);
+}
 
 .barras {
   list-style: none;
@@ -522,10 +584,10 @@ button.redondo:disabled {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-  background: var(--superficie);
+  background: var(--vidrio);
+  border: 1px solid var(--vidrio-borde);
   border-radius: var(--radio);
   padding: 1.15rem;
-  box-shadow: var(--sombra);
 }
 
 .formulario label,
@@ -669,7 +731,8 @@ button.peligro {
   list-style: none;
   margin: 0;
   padding: 0;
-  background: var(--superficie);
+  background: var(--vidrio);
+  border: 1px solid var(--vidrio-borde);
   border-radius: var(--radio);
   overflow: hidden;
 }
@@ -706,6 +769,48 @@ button.peligro {
   gap: 0.4rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+@media (max-width: 859px) {
+  .renglon:has(.sello) {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "filete concepto concepto concepto"
+      ". guia monto sello";
+    row-gap: 0.3rem;
+  }
+
+  .renglon.sin-filete:has(.sello) {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "concepto concepto concepto"
+      "guia monto sello";
+  }
+
+  .renglon:has(.sello) > .filete {
+    grid-area: filete;
+  }
+
+  .renglon:has(.sello) > .renglon-concepto {
+    grid-area: concepto;
+    white-space: normal;
+  }
+
+  .renglon:has(.sello) > .renglon-guia {
+    grid-area: guia;
+  }
+
+  .renglon:has(.sello) > .renglon-monto {
+    grid-area: monto;
+  }
+
+  .renglon:has(.sello) > .sello {
+    grid-area: sello;
+  }
+
+  .renglones {
+    gap: 0.85rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -773,10 +878,21 @@ button.peligro {
 
   .tablero {
     grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "gastado atender"
+      "categorias atender";
     align-items: start;
   }
 
+  .gastado {
+    grid-area: gastado;
+  }
+
   .atender {
-    grid-row: span 2;
+    grid-area: atender;
+  }
+
+  .categorias {
+    grid-area: categorias;
   }
 }

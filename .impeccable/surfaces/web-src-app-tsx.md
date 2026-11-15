@@ -2,7 +2,7 @@
 version: 1
 slug: "web-src-app-tsx"
 primary_target: "web/src/App.tsx"
-related_targets: ["web/src/Mes.tsx","web/src/Cargar.tsx"]
+related_targets: ["web/src/Gastos.tsx","web/src/Cargar.tsx"]
 ---
 
 # App Conciliador (web)
@@ -10,7 +10,7 @@ related_targets: ["web/src/Mes.tsx","web/src/Cargar.tsx"]
 Scope: toda la app web: Gastos (con meses anteriores), Cargar, Revisar, Importar, Movimientos, Plan, Portafolio y Trading. Mode: Operate.
 Audience: el dueño de los datos, en el celular para cargar y mirar, en la computadora para importar y revisar; y quien mira la demo pública con datos inventados.
 Task: ver qué requiere atención este mes, cargar rápido, seguir las posiciones.
-Constraints: base pedida por el usuario y fija (segunda referencia, reemplaza a la primera): fondo casi negro con tinte violeta, violeta para lo que se puede tocar, verde menta para lo positivo, rojo para lo que sale o falta, tarjetas grandes redondeadas con degradé suave, montos grandes en una grotesca ancha, menú flotante abajo con botones redondos. Montos `$ 1.234,56` / `U$D 88,24`. Portafolio y Trading sin API todavía: se muestran con datos de ejemplo, rotulados.
+Constraints: base pedida por el usuario y fija (segunda referencia, reemplaza a la primera): fondo casi negro con tinte violeta, violeta para lo que se puede tocar, verde menta para lo positivo, rojo para lo que sale o falta, tarjetas grandes redondeadas con degradé suave, montos grandes en una grotesca ancha, menú flotante abajo con botones redondos. Corrección del usuario tras verlo: fondo bien violeta; contenedores sutiles (relleno casi transparente, borde muy tenue, sin sombras marcadas ni muescas); más aire entre bloques. Las cajas remarcadas se leen como "hecho por IA". Montos `$ 1.234,56` / `U$D 88,24`. Portafolio y Trading sin API todavía: se muestran con datos de ejemplo, rotulados.
 
 ## Direction contract
 

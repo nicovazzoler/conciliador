@@ -74,18 +74,21 @@ function Contenido({
       : null;
 
   return (
-    <div className="tablero">
+    <>
       <p className="nota centrada importado">
         Mercado Pago {importado.mercado_pago ? "importado" : "sin importar: los fijos no se controlan"} ·{" "}
         {importado.resumenes ? `resúmenes que vencen: ${importado.resumenes.split(", ").length}` : "ningún resumen vence este mes"}
       </p>
+      <div className="tablero">
 
       <Comprobante
         titulo="Gastado"
         tinte="violeta"
         className="gastado"
         pie={
-          variacion === null ? (
+          !importado.mercado_pago ? (
+            <span className="nota">Falta el Mercado Pago de este mes: todavía no se puede comparar.</span>
+          ) : variacion === null ? (
             <span className="nota">Sin datos del mes anterior para comparar.</span>
           ) : (
             <span className="nota">
@@ -96,7 +99,8 @@ function Contenido({
       >
         <div className="gastado-arriba">
           <p className="monto-grande">
-            <span className="moneda">$</span> {importe(totales.pesos_centavos)}
+            <span className="moneda">$</span>
+            <span>{importe(totales.pesos_centavos)}</span>
           </p>
           <Meses historial={historial} actual={mes} alElegir={alElegirMes} />
         </div>
@@ -136,20 +140,56 @@ function Contenido({
         {reporte.categorias.length === 0 ? (
           <p className="vacio">Sin gastos este mes.</p>
         ) : (
-          <ul className="barras">
-            {reporte.categorias.map((c) => (
-              <li key={c.categoria ?? "sin categoría"}>
-                <span className="barras-nombre">{c.categoria ?? "Sin categoría"}</span>
-                <span className="barras-pista" aria-hidden="true">
-                  <span style={{ width: `${Math.max(c.porcentaje ?? 0, 1.5)}%` }} />
-                </span>
-                <span className="barras-valor">{(c.porcentaje ?? 0).toLocaleString("es-AR")}%</span>
-              </li>
-            ))}
-          </ul>
+          <Categorias categorias={reporte.categorias} />
         )}
       </Comprobante>
-    </div>
+      </div>
+    </>
+  );
+}
+
+const COLORES = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)"];
+
+/** Las cinco categorías más grandes con su color; el resto se junta en "Otras". */
+function Categorias({ categorias }: { categorias: Reporte["categorias"] }) {
+  const principales = categorias.slice(0, COLORES.length);
+  const resto = categorias.slice(COLORES.length);
+  const filas = principales.map((c, i) => ({
+    nombre: c.categoria ?? "Sin categoría",
+    usd: c.total_usd_centavos ?? 0,
+    porcentaje: c.porcentaje ?? 0,
+    color: COLORES[i] ?? "var(--apagado)",
+  }));
+  if (resto.length > 0)
+    filas.push({
+      nombre: `Otras (${resto.length})`,
+      usd: resto.reduce((suma, c) => suma + (c.total_usd_centavos ?? 0), 0),
+      porcentaje: Math.round(resto.reduce((suma, c) => suma + (c.porcentaje ?? 0), 0) * 10) / 10,
+      color: "var(--apagado)",
+    });
+  const total = filas.reduce((suma, f) => suma + f.usd, 0);
+  return (
+    <>
+      {total > 0 ? (
+        <div className="composicion" aria-hidden="true">
+          {filas.map((f) => (
+            <span key={f.nombre} style={{ width: `${(f.usd / total) * 100}%`, background: f.color }} />
+          ))}
+        </div>
+      ) : (
+        <p className="nota">Sin cotización del dólar todavía: los montos en USD aparecen al bajarla.</p>
+      )}
+      <ul className="leyenda">
+        {filas.map((f) => (
+          <li key={f.nombre}>
+            <span className="leyenda-punto" style={{ background: f.color }} aria-hidden="true" />
+            <span className="leyenda-nombre">{f.nombre}</span>
+            <span className="leyenda-monto">{plata(f.usd, "USD")}</span>
+            <span className="leyenda-porcentaje">{f.porcentaje.toLocaleString("es-AR")}%</span>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 

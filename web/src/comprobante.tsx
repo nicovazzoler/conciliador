@@ -44,7 +44,7 @@ export function Renglon({
   fuerte?: boolean;
 }) {
   return (
-    <li className={`renglon${fuerte ? " renglon-fuerte" : ""}`}>
+    <li className={`renglon${forma ? "" : " sin-filete"}${fuerte ? " renglon-fuerte" : ""}`}>
       {forma && <span className={`filete filete-${forma} tono-${tono}`} aria-hidden="true" />}
       <span className="renglon-concepto">{concepto}</span>
       <span className="renglon-guia" aria-hidden="true" />
