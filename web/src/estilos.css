@@ -227,3 +227,194 @@ input[type="month"] {
   background: var(--acento);
   border-radius: 999px;
 }
+
+/* Barra de abajo: al alcance del pulgar. El padding de .pagina deja lugar para que no tape nada. */
+
+.pagina {
+  padding-bottom: 5.5rem;
+}
+
+.barra-abajo {
+  position: fixed;
+  inset: auto 0 0 0;
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
+  background: var(--superficie);
+  border-top: 1px solid var(--borde);
+}
+
+.barra-abajo a {
+  flex: 1;
+  max-width: 10rem;
+  text-align: center;
+  padding: 0.6rem 0.5rem;
+  border-radius: 0.6rem;
+  color: var(--suave);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.barra-abajo a[aria-current="page"] {
+  color: var(--acento);
+  background: var(--bien-fondo);
+}
+
+/* Formularios. */
+
+.pestanias {
+  display: flex;
+  gap: 0.25rem;
+  margin: 1rem 0;
+  padding: 0.25rem;
+  background: var(--neutro-fondo);
+  border-radius: 0.75rem;
+}
+
+.pestania {
+  flex: 1;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.6rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--suave);
+  cursor: pointer;
+}
+
+.pestania.activa {
+  background: var(--superficie);
+  color: var(--texto);
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.formulario label,
+.moneda legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  color: var(--suave);
+}
+
+.formulario input:not([type="radio"]),
+.formulario select {
+  font: inherit;
+  color: var(--texto);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  min-height: 2.75rem;
+  width: 100%;
+}
+
+.dos-columnas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.moneda {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.moneda legend {
+  margin-bottom: 0.3rem;
+}
+
+.moneda label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--texto);
+  font-size: 1rem;
+}
+
+.avisos {
+  background: var(--ojo-fondo);
+  color: var(--ojo);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.avisos p {
+  margin: 0;
+}
+
+button.principal,
+button.secundario,
+button.peligro {
+  font: inherit;
+  font-weight: 600;
+  border-radius: 0.6rem;
+  padding: 0.6rem 1rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+
+button.principal {
+  background: var(--acento);
+  color: var(--superficie);
+  border: 0;
+}
+
+button.principal:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+button.secundario {
+  background: transparent;
+  color: var(--texto);
+  border: 1px solid var(--borde);
+}
+
+button.peligro {
+  background: var(--mal);
+  color: var(--superficie);
+  border: 0;
+}
+
+.mensaje {
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  margin: 1rem 0 0;
+}
+
+.mensaje-bien {
+  background: var(--bien-fondo);
+  color: var(--bien);
+}
+
+.mensaje-error {
+  background: var(--mal-fondo);
+  color: var(--mal);
+}
+
+.fila-texto {
+  flex: 1;
+  min-width: 0;
+}
+
+.confirmar {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

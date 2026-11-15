@@ -31,6 +31,11 @@ export function mesActual(hoy: Date = new Date()): string {
   return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
 }
 
+/** La fecha de hoy, como la pide la API: "2026-11-15". */
+export function hoy(fecha: Date = new Date()): string {
+  return `${mesActual(fecha)}-${String(fecha.getDate()).padStart(2, "0")}`;
+}
+
 /** "2026-10-05" → "05/10". */
 export function diaYMes(fecha: string): string {
   return `${fecha.slice(8, 10)}/${fecha.slice(5, 7)}`;
