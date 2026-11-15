@@ -333,3 +333,60 @@ def test_importar_la_carpeta_no_pisa_un_plan_ya_cargado(tmp_path):
     (del_plan,) = [i for i in informes if i.archivo == "plan.csv"]
     assert "se edita desde ahí" in del_plan.problemas[0]
     assert "Gimnasio" in {f["concepto"] for f in cliente.get("/api/plan").json()["fijos"]}
+
+
+
+def test_movimientos_del_mes_con_lo_que_entro_y_salio(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    datos = cliente.get("/api/movimientos/2026-10").json()
+    tipos = {m["tipo"] for m in datos["movimientos"]}
+    assert {"consumo", "ingreso"} <= tipos  # No solo gastos: todo lo del mes.
+    assert datos["salio_centavos"] > 0 and datos["entro_centavos"] > 0
+    fechas = [m["fecha"] for m in datos["movimientos"]]
+    assert fechas == sorted(fechas, reverse=True)
+    assert cliente.get("/api/movimientos/2026-13").status_code == 422
+
+
+def test_cambiar_la_categoria_de_un_movimiento_y_volver_a_la_automatica(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    internet = next(m for m in cliente.get("/api/movimientos/2026-10").json()["movimientos"] if "Internet" in m["descripcion"])
+    assert internet["categoria"] == "Servicios"  # Del plan.
+    assert cliente.put(f"/api/movimientos/{internet['id']}/categoria", json={"categoria": "Hogar"}).status_code == 204
+    cambiado = next(m for m in cliente.get("/api/movimientos/2026-10").json()["movimientos"] if m["id"] == internet["id"])
+    assert (cambiado["categoria"], cambiado["categoria_manual"]) == ("Hogar", True)
+    cliente.put(f"/api/movimientos/{internet['id']}/categoria", json={"categoria": None})
+    vuelto = next(m for m in cliente.get("/api/movimientos/2026-10").json()["movimientos"] if m["id"] == internet["id"])
+    assert (vuelto["categoria"], vuelto["categoria_manual"]) == ("Servicios", False)
+
+
+def test_unir_dos_categorias_renombrando_una(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    cliente.post("/api/reglas", json={"texto": "Kiosco Demo", "categoria": "Kiosco"})
+    cliente.post("/api/reglas", json={"texto": "PedidosDemo", "categoria": "Comida"})
+    unidas = cliente.post("/api/categorias/renombrar", json={"de": "Kiosco", "a": "Comida"})
+    assert unidas.status_code == 200 and unidas.json()["movimientos"] >= 1
+    detalle = {c["nombre"]: c for c in cliente.get("/api/categorias/detalle").json()}
+    assert "Kiosco" not in detalle
+    assert detalle["Comida"]["reglas"] == 2
+    assert cliente.post("/api/categorias/renombrar", json={"de": "Comida", "a": "Gastos varios"}).status_code == 422
+
+
+def test_borrar_una_categoria_saca_sus_reglas_y_lo_suyo_vuelve_a_gastos_varios(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    cliente.post("/api/reglas", json={"texto": "Kiosco Demo", "categoria": "Kiosco"})
+    assert cliente.delete("/api/categorias/Kiosco").status_code == 204
+    assert "Kiosco" not in {c["nombre"] for c in cliente.get("/api/categorias/detalle").json()}
+    assert all(r["categoria"] != "Kiosco" for r in cliente.get("/api/reglas").json())
+
+
+def test_editar_y_borrar_una_regla_recalcula_lo_que_habia_categorizado(tmp_path):
+    cliente, _ = cliente_con_demo(tmp_path)
+    cliente.post("/api/reglas", json={"texto": "Kiosco Demo", "categoria": "Kiosco"})
+    (regla,) = [r for r in cliente.get("/api/reglas").json() if r["texto"] == "Kiosco Demo"]
+    assert cliente.put(f"/api/reglas/{regla['id']}", json={"texto": "Kiosco Demo", "categoria": "Golosinas"}).status_code == 204
+    kiosco = next(m for m in cliente.get("/api/movimientos/2026-10").json()["movimientos"] if "Kiosco Demo" in m["descripcion"])
+    assert kiosco["categoria"] == "Golosinas"
+    assert cliente.delete(f"/api/reglas/{regla['id']}").status_code == 204
+    kiosco = next(m for m in cliente.get("/api/movimientos/2026-10").json()["movimientos"] if m["id"] == kiosco["id"])
+    assert kiosco["categoria"] == "Gastos varios"
+    assert cliente.delete(f"/api/reglas/{regla['id']}").status_code == 404

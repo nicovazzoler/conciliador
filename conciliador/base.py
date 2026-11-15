@@ -733,3 +733,114 @@ def contar_sin_usd(motor: Engine) -> int:
             .select_from(Movimiento)
             .where(Movimiento.usd_centavos.is_(None))
         )
+
+
+# Movimientos y edición de categorías.
+
+
+def movimientos_del_mes(motor: Engine, mes: str) -> list[dict]:
+    """Todo lo del mes, del más nuevo al más viejo: gastos, ingresos, transferencias, pagos y cambios."""
+    with Session(motor) as sesion:
+        filas = sesion.scalars(
+            select(Movimiento).where(Movimiento.mes == mes).order_by(Movimiento.fecha.desc(), Movimiento.id.desc())
+        )
+        return [
+            {
+                "id": f.id, "fecha": f.fecha, "descripcion": f.descripcion, "fuente": f.fuente, "tipo": f.tipo,
+                "categoria": f.categoria, "categoria_manual": f.categoria_manual, "plan_concepto": f.plan_concepto,
+                "monto_centavos": f.monto_centavos, "moneda": f.moneda, "usd_centavos": f.usd_centavos,
+                "cuota": f.cuota, "medio": f.medio,
+            }
+            for f in filas
+        ]
+
+
+def poner_categoria(motor: Engine, movimiento_id: int, categoria: str | None) -> bool:
+    """Con categoría, queda puesta a mano. Sin categoría, vuelve a la automática: plan, impuestos o reglas."""
+    with Session(motor) as sesion, sesion.begin():
+        movimiento = sesion.get(Movimiento, movimiento_id)
+        if movimiento is None:
+            return False
+        movimiento.categoria = categoria
+        movimiento.categoria_manual = categoria is not None
+        movimiento.pendiente = False
+    aplicar_reglas(motor)
+    return True
+
+
+def categorias_detalle(motor: Engine) -> list[dict]:
+    """Cada categoría con cuántos movimientos, reglas y conceptos del plan la usan."""
+    with Session(motor) as sesion:
+        en_movimientos = dict(sesion.execute(
+            select(Movimiento.categoria, func.count())
+            .where(Movimiento.categoria.is_not(None), Movimiento.categoria != clasificar.SIN_REGLA)
+            .group_by(Movimiento.categoria)
+        ).all())
+        en_reglas = dict(sesion.execute(select(Regla.categoria, func.count()).group_by(Regla.categoria)).all())
+        en_plan: dict[str, int] = {}
+        for modelo in (Fijo, Cuota):
+            for categoria, cantidad in sesion.execute(
+                select(modelo.categoria, func.count()).where(modelo.categoria.is_not(None)).group_by(modelo.categoria)
+            ):
+                en_plan[categoria] = en_plan.get(categoria, 0) + cantidad
+    nombres = sorted({*en_movimientos, *en_reglas, *en_plan}, key=lambda n: (-en_movimientos.get(n, 0), n.lower()))
+    return [
+        {"nombre": n, "movimientos": en_movimientos.get(n, 0), "reglas": en_reglas.get(n, 0), "en_plan": en_plan.get(n, 0)}
+        for n in nombres
+    ]
+
+
+def renombrar_categoria(motor: Engine, de: str, a: str) -> int:
+    """Cambia el nombre en movimientos, reglas y plan. Si `a` ya existe, las dos quedan unidas."""
+    with Session(motor) as sesion, sesion.begin():
+        cambiados = sesion.execute(
+            update(Movimiento).where(Movimiento.categoria == de).values(categoria=a)
+        ).rowcount
+        for modelo in (Regla, Fijo, Cuota):
+            sesion.execute(update(modelo).where(modelo.categoria == de).values(categoria=a))
+    return cambiados
+
+
+def borrar_categoria(motor: Engine, nombre: str) -> None:
+    """Saca la categoría de todos lados: borra sus reglas, la quita del plan y lo que la tenía se recalcula."""
+    with Session(motor) as sesion, sesion.begin():
+        sesion.execute(delete(Regla).where(Regla.categoria == nombre))
+        for modelo in (Fijo, Cuota):
+            sesion.execute(update(modelo).where(modelo.categoria == nombre).values(categoria=None))
+        sesion.execute(
+            update(Movimiento).where(Movimiento.categoria == nombre).values(categoria=None, categoria_manual=False)
+        )
+    aplicar_reglas(motor)
+
+
+def reglas(motor: Engine) -> list[dict]:
+    with Session(motor) as sesion:
+        return [
+            {"id": r.id, "texto": r.valor, "categoria": r.categoria}
+            for r in sesion.scalars(select(Regla).order_by(Regla.categoria, Regla.valor))
+        ]
+
+
+def editar_regla(motor: Engine, regla_id: int, texto: str | None, categoria: str | None) -> bool:
+    """Sin texto ni categoría, la borra. Lo que la regla había categorizado se recalcula."""
+    with Session(motor) as sesion, sesion.begin():
+        regla = sesion.get(Regla, regla_id)
+        if regla is None:
+            return False
+        if texto is not None:
+            otra = sesion.scalar(select(Regla.id).where(Regla.valor == texto, Regla.id != regla_id))
+            if otra is not None:
+                raise ReglaRepetida(sesion.get(Regla, otra).categoria)
+        # Lo que esta regla categorizó (no puesto a mano, con su categoría y su texto) vuelve a calcularse.
+        for movimiento in sesion.scalars(
+            select(Movimiento).where(Movimiento.categoria == regla.categoria, Movimiento.categoria_manual.is_(False))
+        ):
+            if clasificar.coincide(regla.valor, movimiento.descripcion):
+                movimiento.categoria = None
+        if texto is None and categoria is None:
+            sesion.delete(regla)
+        else:
+            regla.valor = texto or regla.valor
+            regla.categoria = categoria or regla.categoria
+    aplicar_reglas(motor)
+    return True
