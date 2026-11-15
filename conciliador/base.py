@@ -440,6 +440,9 @@ def aplicar_reglas(motor: Engine) -> None:
             if gasto.plan_concepto in del_plan:
                 # Lo anotado en el plan es más específico que una regla de texto.
                 gasto.categoria, gasto.pendiente = del_plan[gasto.plan_concepto], False
+            elif gasto.tipo == "impuesto":
+                # Los cargos de la tarjeta van juntos, sin una regla por cada sello o IVA.
+                gasto.categoria, gasto.pendiente = clasificar.IMPUESTOS, False
             elif gasto.categoria in (None, clasificar.SIN_REGLA):
                 gasto.categoria, gasto.pendiente = clasificar.decidir(gasto, reglas, fijos, cuotas)
 

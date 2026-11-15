@@ -3,6 +3,7 @@ import re
 import unicodedata
 
 SIN_REGLA = "Gastos varios"
+IMPUESTOS = "Impuestos"  # Sellos, IIBB, IVA y otros cargos de la tarjeta.
 GASTO_GRANDE_CENTAVOS = 5_000_000
 TOPE_DIARIO_CENTAVOS = 20_000_000  # $200.000 por día; el reporte lo pasa como :tope.
 TIPOS_DE_GASTO = ("consumo", "cuota", "impuesto")

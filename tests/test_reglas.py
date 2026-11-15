@@ -305,3 +305,14 @@ def test_el_plan_lee_la_categoria(tmp_path):
     )
     leido = plan.leer(archivo)
     assert (leido.fijos[0].categoria, leido.cuotas[0].categoria) == ("Servicios", None)
+
+
+def test_los_impuestos_de_la_tarjeta_van_solos_a_impuestos(tmp_path):
+    motor = base.conectar(tmp_path / "p.db")
+    gasto(motor, "1", "IMPUESTO DE SELLOS DEMO", 1_200)
+    with base.Session(motor) as sesion, sesion.begin():
+        fila = sesion.scalar(select(base.Movimiento))
+        fila.tipo = "impuesto"
+        sesion.add(base.Regla(valor="IMPUESTO", categoria="Impuesto"))
+    base.aplicar_reglas(motor)
+    assert buscar(motor, "IMPUESTO DE SELLOS DEMO").categoria == "Impuestos"  # Unifica, aunque haya regla.
