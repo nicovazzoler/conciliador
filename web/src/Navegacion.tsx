@@ -11,7 +11,7 @@ export const SECCIONES = [
 
 export type Ruta = (typeof SECCIONES)[number]["ruta"];
 
-export function Navegacion({ actual }: { actual: Ruta }) {
+export function Navegacion({ actual }: { actual?: Ruta }) {
   return (
     <nav className="navegacion" aria-label="Secciones">
       {SECCIONES.map(({ ruta, titulo, icono: Icono }) => (

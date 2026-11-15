@@ -140,6 +140,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ver Plan */
+        get: operations["ver_plan_api_plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plan.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exportar Plan */
+        get: operations["exportar_plan_api_plan_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plan/fijos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Crear Fijo */
+        post: operations["crear_fijo_api_plan_fijos_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plan/fijos/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Editar Fijo */
+        put: operations["editar_fijo_api_plan_fijos__item_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plan/cuotas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Crear Cuota */
+        post: operations["crear_cuota_api_plan_cuotas_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plan/cuotas/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Editar Cuota */
+        put: operations["editar_cuota_api_plan_cuotas__item_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plan/{tabla}/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Borrar Del Plan */
+        delete: operations["borrar_del_plan_api_plan__tabla___item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/categorias": {
         parameters: {
             query?: never;
@@ -263,6 +382,46 @@ export interface components {
              */
             estado: "sin datos" | "falta" | "sin plan" | "repetida" | "otro número" | "bien";
         };
+        /** CuotaEntrada */
+        CuotaEntrada: {
+            /** Concepto */
+            concepto: string;
+            /** Texto */
+            texto: string;
+            /** Monto */
+            monto: string;
+            /**
+             * Moneda
+             * @default ARS
+             * @enum {string}
+             */
+            moneda?: "ARS" | "USD";
+            /** Cantidad */
+            cantidad: number;
+            /** Primer Mes */
+            primer_mes: string;
+            /** Categoria */
+            categoria?: string | null;
+        };
+        /** CuotaPlan */
+        CuotaPlan: {
+            /** Id */
+            id: number;
+            /** Concepto */
+            concepto: string;
+            /** Texto */
+            texto: string;
+            /** Monto Centavos */
+            monto_centavos: number;
+            /** Moneda */
+            moneda: string;
+            /** Cantidad */
+            cantidad: number;
+            /** Primer Mes */
+            primer_mes: string;
+            /** Categoria */
+            categoria: string | null;
+        };
         /** Dia */
         Dia: {
             /**
@@ -294,6 +453,42 @@ export interface components {
              * @enum {string}
              */
             estado: "sin datos" | "sin debitar" | "más caro" | "más barato" | "bien";
+        };
+        /** FijoEntrada */
+        FijoEntrada: {
+            /** Concepto */
+            concepto: string;
+            /** Texto */
+            texto: string;
+            /** Monto */
+            monto: string;
+            /**
+             * Moneda
+             * @default ARS
+             * @enum {string}
+             */
+            moneda?: "ARS" | "USD";
+            /** Dia */
+            dia?: number | null;
+            /** Categoria */
+            categoria?: string | null;
+        };
+        /** FijoPlan */
+        FijoPlan: {
+            /** Id */
+            id: number;
+            /** Concepto */
+            concepto: string;
+            /** Texto */
+            texto: string;
+            /** Monto Centavos */
+            monto_centavos: number;
+            /** Moneda */
+            moneda: string;
+            /** Dia */
+            dia: number | null;
+            /** Categoria */
+            categoria: string | null;
         };
         /** GastoNuevo */
         GastoNuevo: {
@@ -457,6 +652,13 @@ export interface components {
             moneda: string;
             /** Sugerido */
             sugerido: string;
+        };
+        /** Plan */
+        Plan: {
+            /** Fijos */
+            fijos: components["schemas"]["FijoPlan"][];
+            /** Cuotas */
+            cuotas: components["schemas"]["CuotaPlan"][];
         };
         /** ReglaGuardada */
         ReglaGuardada: {
@@ -802,6 +1004,212 @@ export interface operations {
                 "application/json": components["schemas"]["Resolucion"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ver_plan_api_plan_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+        };
+    };
+    exportar_plan_api_plan_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+        };
+    };
+    crear_fijo_api_plan_fijos_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FijoEntrada"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guardado"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    editar_fijo_api_plan_fijos__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FijoEntrada"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guardado"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    crear_cuota_api_plan_cuotas_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CuotaEntrada"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guardado"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    editar_cuota_api_plan_cuotas__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CuotaEntrada"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guardado"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    borrar_del_plan_api_plan__tabla___item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tabla: "fijos" | "cuotas";
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             204: {

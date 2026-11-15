@@ -5,6 +5,7 @@ import "@fontsource-variable/jetbrains-mono";
 import { App } from "./App";
 import "./estilos.css";
 import "./pantallas.css";
+import "./plan.css";
 
 createRoot(document.getElementById("raiz")!).render(
   <StrictMode>

@@ -1,0 +1,122 @@
+/* Plan y el acceso desde la barra. Usa las variables de estilos.css. */
+
+.barra-plan {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--vidrio-borde);
+  color: var(--suave);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.barra-plan:hover,
+.barra-plan[aria-current="page"] {
+  color: var(--texto);
+  border-color: var(--violeta);
+}
+
+.titulo-con-accion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.titulo-con-accion .titulo-pagina {
+  margin-bottom: 0.25rem;
+}
+
+.boton-enlace {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--violeta);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.paneles-parejos {
+  margin-top: 1rem;
+}
+
+.avance {
+  display: block;
+  height: 0.35rem;
+  margin-top: 0.4rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.06);
+  overflow: hidden;
+}
+
+.avance span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--violeta);
+}
+
+.agregar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--violeta);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.item.editor {
+  display: block;
+}
+
+.editor-plan {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.editor-plan .campo input {
+  width: 100%;
+}
+
+.editor-plan .con-numeros {
+  font-family: var(--numeros);
+}
+
+.editor-plan .dos-columnas {
+  align-items: end;
+}
+
+.acciones-plan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.boton-texto.peligroso {
+  margin-left: auto;
+  color: var(--rojo);
+}
+
+@media (min-width: 860px) {
+  .paneles-parejos {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .barra {
+    gap: 1rem;
+  }
+
+  .barra .navegacion {
+    margin-left: auto;
+  }
+}

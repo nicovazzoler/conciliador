@@ -124,3 +124,28 @@ export async function importarArchivos(archivos: File[]): Promise<Importacion> {
   for (const archivo of archivos) formulario.append("archivos", archivo);
   return leer<Importacion>(await fetch("/api/importar", { method: "POST", body: formulario }));
 }
+
+// Plan.
+
+export type Plan = Esquemas["Plan"];
+export type FijoPlan = Esquemas["FijoPlan"];
+export type CuotaPlan = Esquemas["CuotaPlan"];
+export type FijoEntrada = Esquemas["FijoEntrada"];
+export type CuotaEntrada = Esquemas["CuotaEntrada"];
+
+export async function traerPlan(): Promise<Plan> {
+  return leer<Plan>(await fetch("/api/plan"));
+}
+
+/** Sin id crea; con id modifica. */
+export async function guardarFijo(fijo: FijoEntrada, id?: number): Promise<void> {
+  await leer(await enviar(id ? `/api/plan/fijos/${id}` : "/api/plan/fijos", id ? "PUT" : "POST", fijo));
+}
+
+export async function guardarCuota(cuota: CuotaEntrada, id?: number): Promise<void> {
+  await leer(await enviar(id ? `/api/plan/cuotas/${id}` : "/api/plan/cuotas", id ? "PUT" : "POST", cuota));
+}
+
+export async function borrarDelPlan(tabla: "fijos" | "cuotas", id: number): Promise<void> {
+  return leer<void>(await enviar(`/api/plan/${tabla}/${id}`, "DELETE"));
+}
