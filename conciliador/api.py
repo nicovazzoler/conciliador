@@ -7,7 +7,9 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import JSONResponse
 
-from conciliador import base, esquemas, manual, reporte
+from conciliador import base, esquemas, manual, reporte, revisar
+
+MINIMO_REGLA = 3  # Una regla "Pa" alcanzaría a Pago, Pasaje, Panadería...
 
 HOST = "127.0.0.1"  # Sin login: solo esta máquina puede entrar.
 PUERTO = 8000
@@ -65,6 +67,44 @@ def crear_app(ruta_db: Path) -> FastAPI:
         if not base.borrar_manual(motor, movimiento_id):
             raise HTTPException(status_code=404, detail="no hay un gasto o pago cargado a mano con ese número")
         return Response(status_code=204)
+
+    @app.get("/api/pendientes", response_model=list[esquemas.Pendiente])
+    def ver_pendientes():
+        return [
+            {**vars(p), "sugerido": revisar.texto_sugerido(p.descripcion)} for p in base.pendientes(motor)
+        ]
+
+    @app.post("/api/pendientes/{movimiento_id}", status_code=204)
+    def resolver(movimiento_id: int, resolucion: esquemas.Resolucion):
+        if not base.es_pendiente(motor, movimiento_id):
+            raise HTTPException(status_code=404, detail="ese movimiento no está para revisar")
+        if resolucion.cambio:
+            base.marcar_cambio(motor, movimiento_id)
+            return Response(status_code=204)
+        categoria = (resolucion.categoria or "").strip()
+        if not categoria:
+            raise HTTPException(status_code=422, detail="falta la categoría, o marcarlo como cambio")
+        regla = (resolucion.regla or "").strip() or None
+        if regla is not None and len(regla) < MINIMO_REGLA:
+            raise HTTPException(status_code=422, detail=f"la regla necesita al menos {MINIMO_REGLA} letras")
+        base.resolver_pendiente(motor, movimiento_id, categoria, regla)
+        return Response(status_code=204)
+
+    @app.get("/api/varios", response_model=list[esquemas.GrupoVarios])
+    def ver_varios():
+        return revisar.agrupar_varios(motor)
+
+    @app.post("/api/reglas", status_code=201, response_model=esquemas.ReglaGuardada)
+    def crear_regla(regla: esquemas.ReglaNueva):
+        texto, categoria = regla.texto.strip(), regla.categoria.strip()
+        if len(texto) < MINIMO_REGLA or not categoria:
+            raise HTTPException(
+                status_code=422, detail=f"la regla necesita al menos {MINIMO_REGLA} letras y una categoría"
+            )
+        try:
+            return {"categorizados": base.agregar_regla(motor, texto, categoria)}
+        except base.ReglaRepetida as error:
+            raise HTTPException(status_code=409, detail=str(error))
 
     return app
 

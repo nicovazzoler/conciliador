@@ -124,3 +124,41 @@ class Manual(BaseModel):
     tarjeta: str | None
     categoria: str | None
     plan_concepto: str | None
+
+
+# Revisar.
+
+
+class Pendiente(BaseModel):
+    id: int
+    fecha: date
+    descripcion: str
+    monto_centavos: int
+    moneda: str
+    sugerido: str  # El texto que se propone para la regla.
+
+
+class Resolucion(BaseModel):
+    """O una categoría (con regla opcional), o `cambio: true` si no fue un gasto."""
+
+    categoria: str | None = None
+    regla: str | None = None
+    cambio: bool = False
+
+
+class GrupoVarios(BaseModel):
+    texto: str
+    moneda: str
+    movimientos: int
+    total_centavos: int
+    ejemplo: str
+    plan_concepto: str | None  # Si el grupo es de un fijo o una cuota del plan.
+
+
+class ReglaNueva(BaseModel):
+    texto: str
+    categoria: str
+
+
+class ReglaGuardada(BaseModel):
+    categorizados: int
