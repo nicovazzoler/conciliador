@@ -3,7 +3,8 @@ import shutil
 from types import SimpleNamespace
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 from alembic import command
@@ -11,7 +12,7 @@ from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import (
-    Date, String, UniqueConstraint, create_engine, delete, func, inspect, or_, select, text, update,
+    Date, DateTime, String, UniqueConstraint, create_engine, delete, func, inspect, or_, select, text, update,
 )
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.engine import Engine
@@ -313,6 +314,79 @@ def _soltar_categoria_del_plan(sesion: Session, conceptos: set) -> None:
         .where(Movimiento.plan_concepto.in_([c for c in conceptos if c]), Movimiento.categoria_manual.is_(False))
         .values(categoria=None, pendiente=False)
     )
+
+
+class OperacionInversion(Base):
+    """Una compra o venta de un activo. Cantidad y precio como texto decimal: no entran en centavos."""
+
+    __tablename__ = "operaciones"
+    __table_args__ = (UniqueConstraint("fuente", "numero_operacion"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fuente: Mapped[str] = mapped_column(String(30))
+    numero_operacion: Mapped[str] = mapped_column(String(80))
+    fecha_hora: Mapped[datetime] = mapped_column(DateTime)
+    activo: Mapped[str] = mapped_column(String(20))
+    tipo_activo: Mapped[str] = mapped_column(String(10))
+    lado: Mapped[str] = mapped_column(String(10))
+    cantidad: Mapped[str] = mapped_column(String(40))
+    precio: Mapped[str] = mapped_column(String(40))
+    comision: Mapped[str] = mapped_column(String(40))
+
+
+class PrecioActivo(Base):
+    """El último precio conocido de cada activo, en USD, con su hora y su origen."""
+
+    __tablename__ = "precios"
+
+    activo: Mapped[str] = mapped_column(String(20), primary_key=True)
+    precio: Mapped[str] = mapped_column(String(40))
+    actualizado: Mapped[datetime] = mapped_column(DateTime)
+    origen: Mapped[str] = mapped_column(String(20))
+
+
+def guardar_operacion(motor: Engine, fuente: str, numero: str, op) -> bool:
+    """Guarda una operación. Devuelve False si ya estaba: se reconoce por fuente y número."""
+    with Session(motor) as sesion, sesion.begin():
+        orden = (
+            insert(OperacionInversion)
+            .values(
+                fuente=fuente, numero_operacion=numero, fecha_hora=op.fecha_hora, activo=op.activo,
+                tipo_activo=op.tipo_activo, lado=op.lado, cantidad=str(op.cantidad), precio=str(op.precio),
+                comision=str(op.comision),
+            )
+            .on_conflict_do_nothing(index_elements=["fuente", "numero_operacion"])
+        )
+        return sesion.execute(orden).rowcount == 1
+
+
+def operaciones(motor: Engine) -> list:
+    from conciliador.inversiones import Operacion
+
+    with Session(motor) as sesion:
+        return [
+            Operacion(o.id, o.fecha_hora, o.activo, o.tipo_activo, o.lado, Decimal(o.cantidad), Decimal(o.precio),
+                      Decimal(o.comision), o.fuente)
+            for o in sesion.scalars(select(OperacionInversion))
+        ]
+
+
+def borrar_operacion(motor: Engine, operacion_id: int) -> bool:
+    with Session(motor) as sesion, sesion.begin():
+        return sesion.execute(delete(OperacionInversion).where(OperacionInversion.id == operacion_id)).rowcount == 1
+
+
+def guardar_precios(motor: Engine, precios: dict, origen: dict[str, str], momento: datetime) -> None:
+    with Session(motor) as sesion, sesion.begin():
+        for activo, precio in precios.items():
+            sesion.merge(PrecioActivo(activo=activo, precio=str(precio), actualizado=momento, origen=origen[activo]))
+
+
+def precios(motor: Engine) -> tuple[dict, datetime | None]:
+    """Los precios guardados y la hora del más viejo: lo que se muestra es tan nuevo como ese."""
+    with Session(motor) as sesion:
+        filas = sesion.scalars(select(PrecioActivo)).all()
+    return {f.activo: Decimal(f.precio) for f in filas}, min((f.actualizado for f in filas), default=None)
 
 
 def reemplazar_plan(motor: Engine, plan: PlanLeido) -> None:

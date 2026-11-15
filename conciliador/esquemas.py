@@ -1,5 +1,5 @@
 """La forma del JSON de la API. FastAPI valida cada respuesta contra esto y lo publica en /docs."""
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel
@@ -236,3 +236,60 @@ class CuotaPlan(BaseModel):
 class Plan(BaseModel):
     fijos: list[FijoPlan]
     cuotas: list[CuotaPlan]
+
+
+# Inversiones.
+
+
+class OperacionNueva(BaseModel):
+    fecha: date
+    activo: str
+    tipo_activo: Literal["cripto", "accion"]
+    lado: Literal["compra", "venta"]
+    cantidad: str  # Texto decimal: 0,0412. Nunca float.
+    precio: str  # USD por unidad.
+    comision: str = "0"
+
+
+class PosicionInversion(BaseModel):
+    activo: str
+    tipo_activo: str
+    cantidad: str
+    costo_promedio: str
+    invertido_centavos: int
+    precio: str | None
+    valor_centavos: int | None
+    no_realizado_centavos: int | None
+
+
+class OperacionInversion(BaseModel):
+    id: int
+    fecha: date
+    activo: str
+    tipo_activo: str
+    lado: str
+    cantidad: str
+    precio: str
+    comision_centavos: int
+    resultado_centavos: int | None  # Solo las ventas: la ganancia o pérdida realizada.
+    abierta: bool  # Una compra de un activo que todavía se tiene.
+
+
+class Inversiones(BaseModel):
+    mes: str
+    cartera_centavos: int
+    invertido_centavos: int
+    no_realizado_centavos: int
+    realizado_mes_centavos: int
+    comisiones_mes_centavos: int
+    operaciones_mes: int
+    sin_precio: list[str]
+    precios_al: datetime | None
+    avisos: list[str]
+    posiciones: list[PosicionInversion]
+    operaciones: list[OperacionInversion]
+
+
+class PreciosActualizados(BaseModel):
+    actualizados: int
+    errores: list[str]
