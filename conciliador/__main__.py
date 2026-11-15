@@ -55,7 +55,7 @@ def main() -> None:
         from conciliador import api  # Solo acá: el resto de los comandos no necesita FastAPI.
 
         try:
-            api.servir(ruta)
+            api.servir(ruta, Path("entrada"), clave_nacion())
         except base.BaseDesactualizada as error:
             raise SystemExit(str(error))
         return

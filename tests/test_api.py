@@ -163,3 +163,67 @@ def test_una_regla_repetida_da_409_y_una_muy_corta_422(tmp_path):
     assert repetida.status_code == 409
     assert "Kiosco" in repetida.json()["detail"]
     assert cliente.post("/api/reglas", json={"texto": "Pa", "categoria": "Comida"}).status_code == 422
+
+
+
+def cliente_vacio(tmp_path):
+    """Una base sin nada y una carpeta entrada/ propia. Las cotizaciones no se bajan de internet."""
+    app = api.crear_app(tmp_path / "p.db", entrada=tmp_path / "entrada", traer_cotizaciones=lambda: [])
+    return TestClient(app), tmp_path / "entrada"
+
+
+def subir(cliente, *rutas, nombre=None):
+    archivos = [("archivos", (nombre or r.name, r.read_bytes(), "application/pdf")) for r in rutas]
+    return cliente.post("/api/importar", files=archivos)
+
+
+def test_importar_los_pdf_de_la_demo_y_reimportar_no_duplica(tmp_path):
+    cliente, entrada = cliente_vacio(tmp_path)
+    pdfs = sorted(DEMO.glob("*.pdf"))
+    primera = subir(cliente, *pdfs).json()
+    assert all(i["reconocido"] and i["nuevas"] > 0 for i in primera["informes"])
+    assert sorted(p.name for p in entrada.iterdir()) == [p.name for p in pdfs]
+
+    segunda = subir(cliente, *pdfs).json()
+    assert all(i["nuevas"] == 0 and i["repetidas"] > 0 for i in segunda["informes"])
+
+
+def test_el_nombre_del_archivo_no_decide_donde_se_guarda(tmp_path):
+    """Path traversal: un nombre con carpetas no puede escribir fuera de entrada/."""
+    cliente, entrada = cliente_vacio(tmp_path)
+    pdf = next(DEMO.glob("mercado_pago*.pdf"))
+    (informe,) = subir(cliente, pdf, nombre="../../afuera.pdf").json()["informes"]
+    assert informe["archivo"] == "afuera.pdf"
+    assert (entrada / "afuera.pdf").exists()
+    assert not (tmp_path.parent / "afuera.pdf").exists()
+
+
+def test_solo_se_aceptan_pdf_o_plan_csv(tmp_path):
+    cliente, entrada = cliente_vacio(tmp_path)
+    respuesta = cliente.post("/api/importar", files=[("archivos", ("notas.txt", b"hola", "text/plain"))])
+    (informe,) = respuesta.json()["informes"]
+    assert informe["reconocido"] is False
+    assert "solo se aceptan" in informe["errores"][0]
+    assert not entrada.exists()
+
+
+def test_un_pdf_que_no_se_reconoce_no_queda_en_entrada(tmp_path):
+    from reportlab.pdfgen import canvas
+
+    cliente, entrada = cliente_vacio(tmp_path)
+    ajeno = tmp_path / "ajeno.pdf"
+    lienzo = canvas.Canvas(str(ajeno))
+    lienzo.drawString(100, 750, "Un PDF que no es un resumen")
+    lienzo.save()
+    (informe,) = subir(cliente, ajeno).json()["informes"]
+    assert informe["reconocido"] is False
+    assert not (entrada / "ajeno.pdf").exists()
+
+
+def test_el_nombre_seguro():
+    assert api.nombre_seguro("../../x.pdf") == "x.pdf"
+    assert api.nombre_seguro("..\\..\\x.PDF") == "x.PDF"
+    assert api.nombre_seguro("plan.csv") == "plan.csv"
+    assert api.nombre_seguro("otro.csv") is None
+    assert api.nombre_seguro(".bashrc.pdf") is None
+    assert api.nombre_seguro("") is None

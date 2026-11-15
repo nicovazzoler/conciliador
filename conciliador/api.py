@@ -1,22 +1,33 @@
 """API HTTP. Solo traduce: cada endpoint llama a las mismas funciones que la terminal."""
+import shutil
+import tempfile
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse
 
-from conciliador import base, esquemas, manual, reporte, revisar
+from conciliador import base, cotizaciones, esquemas, importar, manual, plan, reporte, revisar
 
+MAXIMO_ARCHIVO = 20 * 1024 * 1024  # 20 MB: un resumen pesa menos de 1.
 MINIMO_REGLA = 3  # Una regla "Pa" alcanzaría a Pago, Pasaje, Panadería...
 
 HOST = "127.0.0.1"  # Sin login: solo esta máquina puede entrar.
 PUERTO = 8000
 
 
-def crear_app(ruta_db: Path) -> FastAPI:
-    """Una app por base: los tests usan una temporal y el comando `web`, la real."""
+def crear_app(
+    ruta_db: Path,
+    entrada: Path = Path("entrada"),
+    clave_nacion: str = "",
+    traer_cotizaciones=cotizaciones.traer,
+) -> FastAPI:
+    """Una app por base: los tests usan una temporal y el comando `web`, la real.
+
+    La clave del PDF de Nación la recibe el servidor al arrancar y nunca viaja a la página.
+    """
     motor = base.conectar(ruta_db)  # Si la base está desactualizada, falla al arrancar.
     app = FastAPI(title="Conciliador")
 
@@ -106,8 +117,53 @@ def crear_app(ruta_db: Path) -> FastAPI:
         except base.ReglaRepetida as error:
             raise HTTPException(status_code=409, detail=str(error))
 
+    @app.post("/api/importar", response_model=esquemas.Importacion)
+    def importar_archivos(archivos: list[UploadFile]):
+        informes = [_importar_uno(archivo, motor, entrada, clave_nacion) for archivo in archivos]
+        base.aplicar_reglas(motor)
+        aviso = importar.actualizar_cotizaciones(motor, traer_cotizaciones)
+        return {
+            "informes": informes,
+            "aviso_cotizaciones": aviso,
+            "pendientes": len(base.pendientes(motor)),
+            "sin_usd": base.contar_sin_usd(motor),
+        }
+
     return app
 
 
-def servir(ruta_db: Path) -> None:
-    uvicorn.run(crear_app(ruta_db), host=HOST, port=PUERTO)
+def nombre_seguro(nombre: str | None) -> str | None:
+    """Solo el nombre final, sin carpetas: '../../x.pdf' queda 'x.pdf'. None si no se acepta."""
+    final = Path((nombre or "").replace("\\", "/")).name
+    if not final or final.startswith("."):
+        return None
+    if final != plan.ARCHIVO and Path(final).suffix.lower() != ".pdf":
+        return None
+    return final
+
+
+def _importar_uno(archivo: UploadFile, motor: base.Engine, entrada: Path, clave_nacion: str) -> dict:
+    nombre = nombre_seguro(archivo.filename)
+    if nombre is None:
+        return _rechazado(archivo.filename or "(sin nombre)", "solo se aceptan PDF o plan.csv")
+    contenido = archivo.file.read(MAXIMO_ARCHIVO + 1)
+    if len(contenido) > MAXIMO_ARCHIVO:
+        return _rechazado(nombre, "pesa más de 20 MB")
+
+    # Se importa desde una carpeta temporal: si no se reconoce, no pisa un archivo bueno de entrada/.
+    with tempfile.TemporaryDirectory() as carpeta:
+        temporal = Path(carpeta) / nombre
+        temporal.write_bytes(contenido)
+        informe = importar.importar_archivo(temporal, motor, clave_nacion)
+        if informe.reconocido:
+            entrada.mkdir(exist_ok=True)
+            shutil.move(temporal, entrada / nombre)
+    return asdict(informe)
+
+
+def _rechazado(nombre: str, motivo: str) -> dict:
+    return asdict(importar.Informe(nombre, errores=[motivo]))
+
+
+def servir(ruta_db: Path, entrada: Path = Path("entrada"), clave_nacion: str = "") -> None:
+    uvicorn.run(crear_app(ruta_db, entrada, clave_nacion), host=HOST, port=PUERTO)
