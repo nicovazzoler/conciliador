@@ -110,6 +110,10 @@ def crear_app(
         base.resolver_pendiente(motor, movimiento_id, categoria, regla)
         return Response(status_code=204)
 
+    @app.get("/api/categorias", response_model=list[str])
+    def ver_categorias():
+        return base.categorias(motor)
+
     @app.get("/api/varios", response_model=list[esquemas.GrupoVarios])
     def ver_varios():
         return revisar.agrupar_varios(motor)

@@ -3,11 +3,16 @@ import type { components } from "./tipos";
 
 export type Esquemas = components["schemas"];
 export type Reporte = Esquemas["Reporte"];
+export type MesHistorial = Esquemas["MesHistorial"];
 export type GastoNuevo = Esquemas["GastoNuevo"];
 export type PagoNuevo = Esquemas["PagoNuevo"];
 export type Aviso = Esquemas["Aviso"];
 export type Guardado = Esquemas["Guardado"];
 export type Manual = Esquemas["Manual"];
+export type Pendiente = Esquemas["Pendiente"];
+export type GrupoVarios = Esquemas["GrupoVarios"];
+export type Importacion = Esquemas["Importacion"];
+export type InformeArchivo = Esquemas["InformeArchivo"];
 
 /** Un error de la API con el mensaje que mandó el servidor, para mostrarlo tal cual. */
 export class ErrorApi extends Error {
@@ -48,15 +53,17 @@ function enviar(ruta: string, metodo: string, datos?: unknown): Promise<Response
   });
 }
 
-export type MesHistorial = Esquemas["MesHistorial"];
+// Gastos.
+
+export async function traerReporte(mes: string, opciones?: RequestInit): Promise<Reporte> {
+  return leer<Reporte>(await fetch(`/api/reporte/${encodeURIComponent(mes)}`, opciones));
+}
 
 export async function traerHistorial(mes: string, meses = 6, opciones?: RequestInit): Promise<MesHistorial[]> {
   return leer<MesHistorial[]>(await fetch(`/api/historial/${encodeURIComponent(mes)}?meses=${meses}`, opciones));
 }
 
-export async function traerReporte(mes: string, opciones?: RequestInit): Promise<Reporte> {
-  return leer<Reporte>(await fetch(`/api/reporte/${encodeURIComponent(mes)}`, opciones));
-}
+// Cargar.
 
 /** Un 409 no es un error: son los avisos que hay que confirmar antes de guardar. */
 export async function cargarGasto(gasto: GastoNuevo): Promise<ResultadoGasto> {
@@ -78,4 +85,42 @@ export async function traerManuales(): Promise<Manual[]> {
 
 export async function borrarManual(id: number): Promise<void> {
   return leer<void>(await enviar(`/api/manuales/${id}`, "DELETE"));
+}
+
+// Revisar.
+
+export async function traerCategorias(): Promise<string[]> {
+  return leer<string[]>(await fetch("/api/categorias"));
+}
+
+export async function traerPendientes(): Promise<Pendiente[]> {
+  return leer<Pendiente[]>(await fetch("/api/pendientes"));
+}
+
+/** Con categoría (y regla opcional), o `cambio: true` si no fue un gasto. */
+export async function resolverPendiente(
+  id: number,
+  resolucion: { categoria?: string; regla?: string | null; cambio?: boolean },
+): Promise<void> {
+  return leer<void>(await enviar(`/api/pendientes/${id}`, "POST", resolucion));
+}
+
+export async function traerVarios(): Promise<GrupoVarios[]> {
+  return leer<GrupoVarios[]>(await fetch("/api/varios"));
+}
+
+/** Devuelve cuántos movimientos categorizó la regla. */
+export async function crearRegla(texto: string, categoria: string): Promise<number> {
+  const { categorizados } = await leer<{ categorizados: number }>(
+    await enviar("/api/reglas", "POST", { texto, categoria }),
+  );
+  return categorizados;
+}
+
+// Importar.
+
+export async function importarArchivos(archivos: File[]): Promise<Importacion> {
+  const formulario = new FormData();
+  for (const archivo of archivos) formulario.append("archivos", archivo);
+  return leer<Importacion>(await fetch("/api/importar", { method: "POST", body: formulario }));
 }

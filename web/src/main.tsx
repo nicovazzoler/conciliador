@@ -4,6 +4,7 @@ import "@fontsource-variable/archivo/wdth.css";
 import "@fontsource-variable/jetbrains-mono";
 import { App } from "./App";
 import "./estilos.css";
+import "./pantallas.css";
 
 createRoot(document.getElementById("raiz")!).render(
   <StrictMode>

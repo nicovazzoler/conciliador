@@ -287,6 +287,22 @@ class ReglaRepetida(Exception):
         self.categoria = categoria
 
 
+def categorias(motor: Engine) -> list[str]:
+    """Las categorías en uso, de la más usada a la menos. "Gastos varios" no es una categoría elegida."""
+    with Session(motor) as sesion:
+        filas = sesion.execute(
+            select(Movimiento.categoria, func.count())
+            .where(Movimiento.categoria.is_not(None), Movimiento.categoria != clasificar.SIN_REGLA)
+            .group_by(Movimiento.categoria)
+            .order_by(func.count().desc(), Movimiento.categoria)
+        ).all()
+        en_uso = [categoria for categoria, _ in filas]
+        sin_movimientos = sesion.scalars(
+            select(Regla.categoria).where(Regla.categoria.not_in(en_uso)).distinct().order_by(Regla.categoria)
+        ).all()
+        return en_uso + list(sin_movimientos)
+
+
 def gastos_varios(motor: Engine) -> list[dict]:
     """Gastos sin categoría real y sin categoría puesta a mano: lo que una regla podría categorizar."""
     with Session(motor) as sesion:

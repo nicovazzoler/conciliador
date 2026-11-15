@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { Cargar } from "./Cargar";
 import { Gastos } from "./Gastos";
+import { Importar } from "./Importar";
 import { Navegacion, SECCIONES, type Ruta } from "./Navegacion";
+import { Revisar } from "./Revisar";
 
 function rutaDe(hash: string): Ruta {
   const nombre = hash.replace(/^#\/?/, "");
@@ -30,8 +32,8 @@ export function App() {
       </header>
       {ruta === "gastos" && <Gastos />}
       {ruta === "cargar" && <Cargar />}
-      {ruta === "revisar" && <EnConstruccion titulo="Revisar" detalle="Los pendientes y Gastos varios por grupo." />}
-      {ruta === "importar" && <EnConstruccion titulo="Importar" detalle="Soltar los PDF y ver qué entró." />}
+      {ruta === "revisar" && <Revisar />}
+      {ruta === "importar" && <Importar />}
       {ruta === "inversiones" && <EnConstruccion titulo="Inversiones" detalle="Portafolio y Trading." />}
     </div>
   );
