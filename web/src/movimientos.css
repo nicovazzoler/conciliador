@@ -1,0 +1,182 @@
+/* Movimientos y Categorías. Usan las variables de estilos.css. */
+
+.entro-salio {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.entro-salio .comprobante {
+  padding: 0.9rem 1rem;
+}
+
+.entro-salio .comprobante-titulo {
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+}
+
+.entro-salio .comprobante {
+  min-width: 0;
+}
+
+.entro-salio .cifra {
+  margin: 0;
+  font-size: clamp(1rem, 4.6vw, 1.45rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.punto {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+
+.punto-menta {
+  background: var(--menta);
+}
+
+.punto-rojo {
+  background: var(--rojo-punto);
+}
+
+.filtros {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.filtros select {
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--texto);
+  background: rgb(255 255 255 / 0.04);
+  border: 1px solid var(--vidrio-borde);
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  min-height: 2.6rem;
+  width: 100%;
+}
+
+.filtros select option {
+  background: var(--superficie);
+}
+
+.buscador {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--vidrio-borde);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--suave);
+}
+
+.buscador input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--texto);
+  background: none;
+  border: 0;
+  padding: 0.6rem 0;
+  caret-color: var(--violeta);
+}
+
+.buscador input:focus-visible {
+  outline: 0;
+}
+
+.buscador:focus-within {
+  border-color: var(--violeta);
+}
+
+.dia {
+  margin-bottom: 1.25rem;
+}
+
+.dia-titulo {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.item.movimiento {
+  display: block;
+  padding: 0;
+}
+
+.movimiento-fila {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.7rem 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.movimiento-fila .item-texto strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.monto-chip {
+  flex: none;
+  padding: 0.35rem 0.6rem;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.05);
+  font: 600 0.85rem var(--numeros);
+  white-space: nowrap;
+}
+
+.movimiento-detalle {
+  padding: 0 0 0.9rem 3.25rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.movimiento-detalle .nota {
+  margin: 0;
+}
+
+.confirmar-borrado {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.confirmar-borrado .nota {
+  flex-basis: 100%;
+  margin: 0 0 0.25rem;
+}
+
+.enlace-seccion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+@media (min-width: 860px) {
+  .filtros .segmentado {
+    min-width: 22rem;
+  }
+
+  .filtros {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .entro-salio {
+    max-width: 36rem;
+  }
+}

@@ -327,6 +327,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/movimientos/{mes}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ver Movimientos */
+        get: operations["ver_movimientos_api_movimientos__mes__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/movimientos/{movimiento_id}/categoria": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Elegir Categoria */
+        put: operations["elegir_categoria_api_movimientos__movimiento_id__categoria_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/categorias/detalle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ver Categorias Detalle */
+        get: operations["ver_categorias_detalle_api_categorias_detalle_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/categorias/renombrar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Renombrar Categoria */
+        post: operations["renombrar_categoria_api_categorias_renombrar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/categorias/{nombre}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Borrar Categoria */
+        delete: operations["borrar_categoria_api_categorias__nombre__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reglas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ver Reglas */
+        get: operations["ver_reglas_api_reglas_get"];
+        put?: never;
+        /** Crear Regla */
+        post: operations["crear_regla_api_reglas_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reglas/{regla_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Editar Regla */
+        put: operations["editar_regla_api_reglas__regla_id__put"];
+        post?: never;
+        /** Borrar Regla */
+        delete: operations["borrar_regla_api_reglas__regla_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/categorias": {
         parameters: {
             query?: never;
@@ -355,23 +476,6 @@ export interface paths {
         get: operations["ver_varios_api_varios_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reglas": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Crear Regla */
-        post: operations["crear_regla_api_reglas_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -431,6 +535,22 @@ export interface components {
             porcentaje: number | null;
             /** Sin Usd */
             sin_usd: number;
+        };
+        /** CategoriaDetalle */
+        CategoriaDetalle: {
+            /** Nombre */
+            nombre: string;
+            /** Movimientos */
+            movimientos: number;
+            /** Reglas */
+            reglas: number;
+            /** En Plan */
+            en_plan: number;
+        };
+        /** CategoriaElegida */
+        CategoriaElegida: {
+            /** Categoria */
+            categoria: string | null;
         };
         /** Cuota */
         Cuota: {
@@ -712,6 +832,49 @@ export interface components {
             /** Total Usd Centavos */
             total_usd_centavos: number;
         };
+        /** MovimientoDelMes */
+        MovimientoDelMes: {
+            /** Id */
+            id: number;
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Descripcion */
+            descripcion: string;
+            /** Fuente */
+            fuente: string;
+            /** Tipo */
+            tipo: string;
+            /** Categoria */
+            categoria: string | null;
+            /** Categoria Manual */
+            categoria_manual: boolean;
+            /** Plan Concepto */
+            plan_concepto: string | null;
+            /** Monto Centavos */
+            monto_centavos: number;
+            /** Moneda */
+            moneda: string;
+            /** Usd Centavos */
+            usd_centavos: number | null;
+            /** Cuota */
+            cuota: string | null;
+            /** Medio */
+            medio: string | null;
+        };
+        /** MovimientosDelMes */
+        MovimientosDelMes: {
+            /** Mes */
+            mes: string;
+            /** Entro Centavos */
+            entro_centavos: number;
+            /** Salio Centavos */
+            salio_centavos: number;
+            /** Movimientos */
+            movimientos: components["schemas"]["MovimientoDelMes"][];
+        };
         /** OperacionInversion */
         OperacionInversion: {
             /** Id */
@@ -836,6 +999,22 @@ export interface components {
             /** Errores */
             errores: string[];
         };
+        /** ReglaDetalle */
+        ReglaDetalle: {
+            /** Id */
+            id: number;
+            /** Texto */
+            texto: string;
+            /** Categoria */
+            categoria: string;
+        };
+        /** ReglaEditada */
+        ReglaEditada: {
+            /** Texto */
+            texto: string;
+            /** Categoria */
+            categoria: string;
+        };
         /** ReglaGuardada */
         ReglaGuardada: {
             /** Categorizados */
@@ -847,6 +1026,18 @@ export interface components {
             texto: string;
             /** Categoria */
             categoria: string;
+        };
+        /** Renombrada */
+        Renombrada: {
+            /** Movimientos */
+            movimientos: number;
+        };
+        /** Renombre */
+        Renombre: {
+            /** De */
+            de: string;
+            /** A */
+            a: string;
         };
         /** Reporte */
         Reporte: {
@@ -1518,6 +1709,267 @@ export interface operations {
             };
         };
     };
+    ver_movimientos_api_movimientos__mes__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mes: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovimientosDelMes"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    elegir_categoria_api_movimientos__movimiento_id__categoria_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                movimiento_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoriaElegida"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ver_categorias_detalle_api_categorias_detalle_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoriaDetalle"][];
+                };
+            };
+        };
+    };
+    renombrar_categoria_api_categorias_renombrar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Renombre"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Renombrada"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    borrar_categoria_api_categorias__nombre__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                nombre: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ver_reglas_api_reglas_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReglaDetalle"][];
+                };
+            };
+        };
+    };
+    crear_regla_api_reglas_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReglaNueva"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReglaGuardada"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    editar_regla_api_reglas__regla_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regla_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReglaEditada"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    borrar_regla_api_reglas__regla_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                regla_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     ver_categorias_api_categorias_get: {
         parameters: {
             query?: never;
@@ -1554,39 +2006,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GrupoVarios"][];
-                };
-            };
-        };
-    };
-    crear_regla_api_reglas_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReglaNueva"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReglaGuardada"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

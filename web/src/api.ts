@@ -172,3 +172,45 @@ export async function borrarOperacion(id: number): Promise<void> {
 export async function actualizarPrecios(): Promise<{ actualizados: number; errores: string[] }> {
   return leer(await enviar("/api/precios", "POST"));
 }
+
+// Movimientos y categorías.
+
+export type MovimientosDelMes = Esquemas["MovimientosDelMes"];
+export type MovimientoDelMes = Esquemas["MovimientoDelMes"];
+export type CategoriaDetalle = Esquemas["CategoriaDetalle"];
+export type ReglaDetalle = Esquemas["ReglaDetalle"];
+
+export async function traerMovimientos(mes: string, opciones?: RequestInit): Promise<MovimientosDelMes> {
+  return leer<MovimientosDelMes>(await fetch(`/api/movimientos/${encodeURIComponent(mes)}`, opciones));
+}
+
+/** `null` devuelve el movimiento a la categoría automática. */
+export async function elegirCategoria(id: number, categoria: string | null): Promise<void> {
+  return leer<void>(await enviar(`/api/movimientos/${id}/categoria`, "PUT", { categoria }));
+}
+
+export async function traerCategoriasDetalle(): Promise<CategoriaDetalle[]> {
+  return leer<CategoriaDetalle[]>(await fetch("/api/categorias/detalle"));
+}
+
+/** Si `a` ya existe, las dos categorías quedan unidas. Devuelve cuántos movimientos cambiaron. */
+export async function renombrarCategoria(de: string, a: string): Promise<number> {
+  const { movimientos } = await leer<{ movimientos: number }>(await enviar("/api/categorias/renombrar", "POST", { de, a }));
+  return movimientos;
+}
+
+export async function borrarCategoria(nombre: string): Promise<void> {
+  return leer<void>(await enviar(`/api/categorias/${encodeURIComponent(nombre)}`, "DELETE"));
+}
+
+export async function traerReglas(): Promise<ReglaDetalle[]> {
+  return leer<ReglaDetalle[]>(await fetch("/api/reglas"));
+}
+
+export async function editarRegla(id: number, texto: string, categoria: string): Promise<void> {
+  return leer<void>(await enviar(`/api/reglas/${id}`, "PUT", { texto, categoria }));
+}
+
+export async function borrarRegla(id: number): Promise<void> {
+  return leer<void>(await enviar(`/api/reglas/${id}`, "DELETE"));
+}

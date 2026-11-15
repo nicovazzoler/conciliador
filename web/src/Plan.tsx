@@ -52,6 +52,9 @@ export function Plan() {
     <main className="pagina">
       <div className="titulo-con-accion">
         <h1 className="titulo-pagina">Plan</h1>
+        <a className="boton-enlace" href="#/categorias">
+          Categorías y reglas
+        </a>
         <a className="boton-enlace" href="/api/plan.csv" download="plan.csv">
           <Download size={16} aria-hidden="true" /> Bajar plan.csv
         </a>
