@@ -105,3 +105,99 @@
     max-width: 22rem;
   }
 }
+
+/* Leer capturas. */
+
+.lector-boton {
+  display: flex;
+  width: fit-content;
+}
+
+.lector-boton input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.lector-boton:focus-within {
+  outline: 2px solid var(--violeta);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.lector {
+  margin-top: 1rem;
+}
+
+.lector-leyendo {
+  margin: 0 0 0.35rem;
+  font-weight: 650;
+  animation: latido 1.4s ease-in-out infinite;
+}
+
+@keyframes latido {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lector-leyendo {
+    animation: none;
+  }
+}
+
+.lector-avisos {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
+  color: var(--ambar);
+  font-size: 0.9rem;
+}
+
+.lector-fila {
+  display: block;
+}
+
+.lector-linea {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lector-linea input[type="checkbox"] {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--violeta);
+}
+
+.lector-nota {
+  color: var(--ambar);
+  font-size: 0.85rem;
+}
+
+.lector-fila.descartada .item-texto {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.formulario.lector-editor {
+  margin: 0.75rem 0 0.25rem 1.9rem;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* Lo leído se corrige en tamaño normal: el monto grande es para la carga a mano. */
+.lector-editor input[inputmode="decimal"] {
+  font: 500 1rem var(--numeros);
+  letter-spacing: 0;
+}
+
+.lector-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}

@@ -12,15 +12,20 @@ from conciliador.revisar import revisar
 RAIZ = Path(__file__).resolve().parent.parent
 
 
-def clave_nacion(ruta_env: Path = RAIZ / ".env") -> str:
-    """La clave del PDF de Nación se lee de .env y nunca se muestra."""
-    if "BNA_PDF_CLAVE" in os.environ:
-        return os.environ["BNA_PDF_CLAVE"]
+def leer_clave(nombre: str, ruta_env: Path = RAIZ / ".env") -> str:
+    """Las claves se leen del entorno o de .env y nunca se muestran."""
+    if nombre in os.environ:
+        return os.environ[nombre]
     if ruta_env.exists():
         for linea in ruta_env.read_text(encoding="utf-8").splitlines():
-            if linea.startswith("BNA_PDF_CLAVE="):
-                return linea.split("=", 1)[1]
+            if linea.startswith(f"{nombre}="):
+                return linea.split("=", 1)[1].strip()
     return ""
+
+
+def clave_nacion(ruta_env: Path = RAIZ / ".env") -> str:
+    """La clave del PDF de Nación."""
+    return leer_clave("BNA_PDF_CLAVE", ruta_env)
 
 
 def main() -> None:
@@ -67,7 +72,7 @@ def main() -> None:
         from conciliador import api  # Solo acá: el resto de los comandos no necesita FastAPI.
 
         try:
-            api.servir(ruta, RAIZ / "entrada", clave_nacion())
+            api.servir(ruta, RAIZ / "entrada", clave_nacion(), leer_clave("ANTHROPIC_API_KEY"))
         except base.BaseDesactualizada as error:
             raise SystemExit(str(error))
         return

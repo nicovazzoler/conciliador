@@ -165,6 +165,16 @@ export async function cargarOperacion(operacion: OperacionNueva): Promise<void> 
   await leer(await enviar("/api/operaciones", "POST", operacion));
 }
 
+export type OperacionLeida = Esquemas["OperacionLeida"];
+export type LecturaCapturas = Esquemas["LecturaCapturas"];
+
+/** Lee operaciones de capturas con Claude. No guarda nada: devuelve lo leído para revisarlo. */
+export async function leerCapturas(archivos: File[]): Promise<LecturaCapturas> {
+  const formulario = new FormData();
+  for (const archivo of archivos) formulario.append("archivos", archivo);
+  return leer<LecturaCapturas>(await fetch("/api/operaciones/leer", { method: "POST", body: formulario }));
+}
+
 export async function borrarOperacion(id: number): Promise<void> {
   return leer<void>(await enviar(`/api/operaciones/${id}`, "DELETE"));
 }
