@@ -22,7 +22,7 @@
 
 .entro-salio .cifra {
   margin: 0;
-  font-size: clamp(1rem, 4.6vw, 1.45rem);
+  font-size: clamp(0.95rem, 4.1vw, 1.45rem);
   overflow: hidden;
   text-overflow: ellipsis;
 }
