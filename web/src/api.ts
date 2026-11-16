@@ -59,6 +59,19 @@ export async function traerReporte(mes: string, opciones?: RequestInit): Promise
   return leer<Reporte>(await fetch(`/api/reporte/${encodeURIComponent(mes)}`, opciones));
 }
 
+export type MesCategoria = Esquemas["MesCategoria"];
+export type MesFijo = Esquemas["MesFijo"];
+
+export async function traerHistorialCategoria(mes: string, nombre: string, meses = 6): Promise<MesCategoria[]> {
+  const consulta = new URLSearchParams({ nombre, meses: String(meses) });
+  return leer<MesCategoria[]>(await fetch(`/api/historial/${encodeURIComponent(mes)}/categoria?${consulta}`));
+}
+
+export async function traerHistorialFijo(mes: string, concepto: string, meses = 6): Promise<MesFijo[]> {
+  const consulta = new URLSearchParams({ concepto, meses: String(meses) });
+  return leer<MesFijo[]>(await fetch(`/api/historial/${encodeURIComponent(mes)}/fijo?${consulta}`));
+}
+
 export async function traerHistorial(mes: string, meses = 6, opciones?: RequestInit): Promise<MesHistorial[]> {
   return leer<MesHistorial[]>(await fetch(`/api/historial/${encodeURIComponent(mes)}?meses=${meses}`, opciones));
 }

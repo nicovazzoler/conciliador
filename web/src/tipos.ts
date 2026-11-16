@@ -21,6 +21,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/historial/{mes}/categoria": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ver Historial Categoria */
+        get: operations["ver_historial_categoria_api_historial__mes__categoria_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/historial/{mes}/fijo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ver Historial Fijo */
+        get: operations["ver_historial_fijo_api_historial__mes__fijo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/historial/{mes}": {
         parameters: {
             query?: never;
@@ -804,6 +838,15 @@ export interface components {
             /** Categoria */
             categoria: string | null;
         };
+        /** FuenteMes */
+        FuenteMes: {
+            /** Fuente */
+            fuente: string;
+            /** Pesos Centavos */
+            pesos_centavos: number;
+            /** Total Usd Centavos */
+            total_usd_centavos: number;
+        };
         /** GastoNuevo */
         GastoNuevo: {
             /** Monto */
@@ -965,6 +1008,32 @@ export interface components {
             /** Plan Concepto */
             plan_concepto: string | null;
         };
+        /** MesCategoria */
+        MesCategoria: {
+            /** Mes */
+            mes: string;
+            /** Movimientos */
+            movimientos: number;
+            /** Pesos Centavos */
+            pesos_centavos: number;
+            /** Total Usd Centavos */
+            total_usd_centavos: number;
+        };
+        /** MesFijo */
+        MesFijo: {
+            /** Mes */
+            mes: string;
+            /** Moneda */
+            moneda: string;
+            /** Anotado Centavos */
+            anotado_centavos: number;
+            /** Cobrado Centavos */
+            cobrado_centavos: number;
+            /** Pagos */
+            pagos: number;
+            /** Estado */
+            estado: string;
+        };
         /** MesHistorial */
         MesHistorial: {
             /** Mes */
@@ -975,6 +1044,8 @@ export interface components {
             dolares_centavos: number;
             /** Total Usd Centavos */
             total_usd_centavos: number;
+            /** Fuentes */
+            fuentes: components["schemas"]["FuenteMes"][];
         };
         /** MovimientoDelMes */
         MovimientoDelMes: {
@@ -1387,6 +1458,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Reporte"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ver_historial_categoria_api_historial__mes__categoria_get: {
+        parameters: {
+            query: {
+                nombre: string;
+                meses?: number;
+            };
+            header?: never;
+            path: {
+                mes: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesCategoria"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ver_historial_fijo_api_historial__mes__fijo_get: {
+        parameters: {
+            query: {
+                concepto: string;
+                meses?: number;
+            };
+            header?: never;
+            path: {
+                mes: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MesFijo"][];
                 };
             };
             /** @description Validation Error */

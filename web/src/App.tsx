@@ -16,16 +16,17 @@ import { Revisar } from "./Revisar";
 const EXTRAS = ["plan", "movimientos", "categorias"] as const;
 type Pantalla = Ruta | (typeof EXTRAS)[number];
 
-/** "#/movimientos/2026-10" → ["movimientos", "2026-10"]. */
-function rutaDe(hash: string): [Pantalla, string | undefined] {
-  const [nombre = "", parametro] = hash.replace(/^#\/?/, "").split("/");
-  if (nombre === "mes") return ["gastos", undefined]; // La dirección vieja sigue funcionando.
-  if ((EXTRAS as readonly string[]).includes(nombre)) return [nombre as Pantalla, parametro];
-  return [SECCIONES.some((s) => s.ruta === nombre) ? (nombre as Ruta) : "gastos", undefined];
+/** "#/movimientos/2026-10/dia:2026-10-05" → ["movimientos", "2026-10", "dia:2026-10-05"]. */
+function rutaDe(hash: string): [Pantalla, string | undefined, string | undefined] {
+  const [nombre = "", parametro, filtro] = hash.replace(/^#\/?/, "").split("/");
+  if (nombre === "mes") return ["gastos", undefined, undefined]; // La dirección vieja sigue funcionando.
+  if ((EXTRAS as readonly string[]).includes(nombre)) return [nombre as Pantalla, parametro, filtro && decodeURIComponent(filtro)];
+  const ruta = SECCIONES.some((s) => s.ruta === nombre) ? (nombre as Ruta) : "gastos";
+  return [ruta, parametro, undefined];
 }
 
 export function App() {
-  const [[ruta, parametro], setRuta] = useState(rutaDe(window.location.hash));
+  const [[ruta, parametro, filtro], setRuta] = useState(rutaDe(window.location.hash));
 
   useEffect(() => {
     const alCambiar = () => setRuta(rutaDe(window.location.hash));
@@ -46,11 +47,11 @@ export function App() {
         </a>
       </header>
       {ruta === "gastos" && <Gastos />}
-      {ruta === "cargar" && <Cargar />}
+      {ruta === "cargar" && <Cargar key={parametro} tipoInicial={parametro === "pago" ? "pago" : "gasto"} />}
       {ruta === "revisar" && <Revisar />}
       {ruta === "importar" && <Importar />}
       {ruta === "plan" && <Plan />}
-      {ruta === "movimientos" && <Movimientos key={parametro} mesInicial={parametro} />}
+      {ruta === "movimientos" && <Movimientos key={`${parametro}/${filtro}`} mesInicial={parametro} filtro={filtro} />}
       {ruta === "categorias" && <Categorias />}
       {ruta === "inversiones" && <Inversiones />}
     </div>

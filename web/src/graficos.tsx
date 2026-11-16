@@ -268,9 +268,12 @@ export function Columnas({
                     <rect key={p.nombre} x={centro - grueso / 2} y={hasta + 2} width={grueso} height={altura} fill={p.color} />
                   );
                 })}
-                <text className={`grafico-eje${c.clave === elegida ? " grafico-eje-fuerte" : ""}`} x={centro} y={alto - 6} textAnchor="middle">
-                  {c.etiqueta}
-                </text>
+                {/* Con poco lugar, una etiqueta cada dos; la elegida siempre. */}
+                {(banda >= 34 || i % 2 === (columnas.length - 1) % 2 || c.clave === elegida) && (
+                  <text className={`grafico-eje${c.clave === elegida ? " grafico-eje-fuerte" : ""}`} x={centro} y={alto - 6} textAnchor="middle">
+                    {c.etiqueta}
+                  </text>
+                )}
               </g>
             );
           })}

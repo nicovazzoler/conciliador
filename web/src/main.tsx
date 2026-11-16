@@ -9,6 +9,7 @@ import "./plan.css";
 import "./inversiones.css";
 import "./movimientos.css";
 import "./graficos.css";
+import "./gastos.css";
 
 createRoot(document.getElementById("raiz")!).render(
   <StrictMode>

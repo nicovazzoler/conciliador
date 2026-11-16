@@ -1,0 +1,253 @@
+/* Gastos: el mes (tarjeta con tinte), mes a mes (abierto), lo que hay que atender (bandeja hundida),
+   los fijos (tabla) y en qué se fue. Cada bloque se distingue por su forma, no solo por el título. */
+
+.tablero-gastos {
+  display: grid;
+  gap: 1rem;
+}
+
+.tablero-gastos .gastado .monto-grande {
+  margin-bottom: 0.75rem;
+}
+
+/* Las tablas de trabajo: una fila por cosa, columnas alineadas, y qué hacer al final. */
+
+.tabla-trabajo {
+  display: grid;
+}
+
+.tabla-fila {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "filete que sello"
+    "filete monto accion";
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  padding: 0.7rem 0;
+  font-size: 0.92rem;
+}
+
+.tabla-fila + .tabla-fila,
+.tabla-grupo + .tabla-grupo,
+.tabla-cabeza + .tabla-grupo {
+  border-top: 1px solid var(--vidrio-borde);
+}
+
+.tabla-fila > .filete {
+  grid-area: filete;
+  align-self: stretch;
+}
+
+.tabla-que {
+  grid-area: que;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tabla-fila > [role="cell"]:has(.sello) {
+  grid-area: sello;
+  justify-self: end;
+}
+
+.atender .tabla-monto {
+  grid-area: monto;
+}
+
+.tabla-monto {
+  font: 500 0.88rem var(--numeros);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--suave);
+}
+
+.tabla-accion {
+  grid-area: accion;
+  justify-self: end;
+}
+
+.tabla-accion a {
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* La tabla de fijos: anotado y cobrado en columnas separadas. */
+
+.fijos .tabla-fila {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "que que sello"
+    "anotado cobrado flecha";
+}
+
+.fijos .tabla-fila > :nth-child(1) {
+  grid-area: que;
+}
+
+.fijos .tabla-fila > :nth-child(2) {
+  grid-area: anotado;
+}
+
+.fijos .tabla-fila > :nth-child(3) {
+  grid-area: cobrado;
+}
+
+.fijos .tabla-boton > :nth-child(3) {
+  color: var(--texto);
+}
+
+.fijos .tabla-fila > :nth-child(4) {
+  grid-area: sello;
+  justify-self: end;
+}
+
+.fijos .tabla-fila > :nth-child(5) {
+  grid-area: flecha;
+  justify-self: end;
+}
+
+.tabla-cabeza {
+  display: none;
+}
+
+.tabla-boton {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tabla-boton:hover .tabla-que {
+  color: var(--violeta);
+}
+
+.tabla-flecha {
+  color: var(--suave);
+  transition: rotate 0.15s ease;
+}
+
+.tabla-grupo.abierto .tabla-flecha {
+  rotate: 180deg;
+}
+
+.tabla-detalle {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.25rem 0 1rem;
+}
+
+.tabla-detalle .nota {
+  margin: 0;
+}
+
+/* En qué se fue: cada categoría se puede tocar. */
+
+.leyenda-tocable li {
+  display: block;
+}
+
+.leyenda-fila {
+  display: grid;
+  grid-template-columns: 0.6rem minmax(0, 1fr) auto 3.4rem;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.25rem 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.92rem;
+  text-align: left;
+}
+
+button.leyenda-fila {
+  cursor: pointer;
+}
+
+button.leyenda-fila:hover .leyenda-nombre,
+button.leyenda-fila[aria-expanded="true"] .leyenda-nombre {
+  color: var(--violeta);
+}
+
+.filtro-activo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 14px;
+  background: var(--violeta-fondo);
+  font-size: 0.9rem;
+}
+
+@media (min-width: 860px) {
+  .tablero-gastos {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    grid-template-areas:
+      "gastado mesames"
+      "fijos fijos"
+      "atender categorias";
+    align-items: start;
+  }
+
+  .tablero-gastos .gastado {
+    grid-area: gastado;
+  }
+
+  .tablero-gastos .mes-a-mes {
+    grid-area: mesames;
+  }
+
+  .tablero-gastos .atender {
+    grid-area: atender;
+  }
+
+  .tablero-gastos .fijos {
+    grid-area: fijos;
+  }
+
+  .tablero-gastos .categorias {
+    grid-area: categorias;
+  }
+
+  .comprobante.mes-a-mes.abierto {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  /* En la computadora, los fijos en una fila cada uno, con las columnas alineadas. */
+  .fijos .tabla-fila {
+    grid-template-columns: minmax(0, 1fr) 9rem 9rem 8rem 1rem;
+    grid-template-areas: "que anotado cobrado sello flecha";
+  }
+
+  .fijos .tabla-fila > :nth-child(2),
+  .fijos .tabla-fila > :nth-child(3) {
+    justify-self: end;
+  }
+
+  .fijos .tabla-fila > :nth-child(4) {
+    justify-self: start;
+  }
+
+  .tabla-cabeza {
+    display: grid;
+    padding-top: 0;
+    color: var(--suave);
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabla-flecha {
+    transition: none;
+  }
+}
