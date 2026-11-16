@@ -61,8 +61,39 @@ def historial(motor: base.Engine, mes: str, cantidad: int = 6) -> list[dict]:
         raise ValueError("se pueden pedir entre 1 y 24 meses")
     meses = meses_hasta(mes, cantidad)
     filas = {f["mes"]: f for f in base.consultar(motor, "historial", desde=meses[0], hasta=meses[-1])}
+    fuentes: dict[str, list[dict]] = {}
+    for f in base.consultar(motor, "historial_fuentes", desde=meses[0], hasta=meses[-1]):
+        fuentes.setdefault(f["mes"], []).append(
+            {"fuente": f["fuente"], "pesos_centavos": f["pesos_centavos"], "total_usd_centavos": f["total_usd_centavos"]}
+        )
     vacio = {"pesos_centavos": 0, "dolares_centavos": 0, "total_usd_centavos": 0}
+    return [{"mes": m, **{k: filas.get(m, vacio)[k] for k in vacio}, "fuentes": fuentes.get(m, [])} for m in meses]
+
+
+def historial_categoria(motor: base.Engine, categoria: str, mes: str, cantidad: int = 6) -> list[dict]:
+    """Lo gastado en una categoría en los últimos meses, para ver si sube o baja."""
+    meses = _meses_validos(mes, cantidad)
+    filas = {f["mes"]: f for f in base.consultar(motor, "historial_categoria", categoria=categoria, desde=meses[0], hasta=meses[-1])}
+    vacio = {"movimientos": 0, "pesos_centavos": 0, "total_usd_centavos": 0}
     return [{"mes": m, **{k: filas.get(m, vacio)[k] for k in vacio}} for m in meses]
+
+
+def historial_fijo(motor: base.Engine, concepto: str, mes: str, cantidad: int = 6) -> list[dict]:
+    """Un fijo del plan, mes por mes: cuánto se cobró y si estuvo bien."""
+    resultado = []
+    for m in _meses_validos(mes, cantidad):
+        fila = next((f for f in base.consultar(motor, "fijos", mes=m) if f["concepto"] == concepto), None)
+        if fila is not None:
+            resultado.append({"mes": m, **{k: fila[k] for k in ("anotado_centavos", "cobrado_centavos", "pagos", "estado", "moneda")}})
+    return resultado
+
+
+def _meses_validos(mes: str, cantidad: int) -> list[str]:
+    if not MES.match(mes):
+        raise ValueError(f"mes inválido: {mes!r}")
+    if not 1 <= cantidad <= 24:
+        raise ValueError("se pueden pedir entre 1 y 24 meses")
+    return meses_hasta(mes, cantidad)
 
 
 def texto(reporte: Reporte) -> str:

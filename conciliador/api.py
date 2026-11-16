@@ -53,6 +53,20 @@ def crear_app(
         except ValueError as error:  # Un mes mal escrito es un error de quien llama.
             raise HTTPException(status_code=422, detail=str(error))
 
+    @app.get("/api/historial/{mes}/categoria", response_model=list[esquemas.MesCategoria])
+    def ver_historial_categoria(mes: str, nombre: str, meses: int = 6):
+        try:
+            return reporte.historial_categoria(motor, nombre, mes, meses)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+
+    @app.get("/api/historial/{mes}/fijo", response_model=list[esquemas.MesFijo])
+    def ver_historial_fijo(mes: str, concepto: str, meses: int = 6):
+        try:
+            return reporte.historial_fijo(motor, concepto, mes, meses)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+
     @app.get("/api/historial/{mes}", response_model=list[esquemas.MesHistorial])
     def ver_historial(mes: str, meses: int = 6):
         try:

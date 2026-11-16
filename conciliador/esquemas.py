@@ -63,11 +63,34 @@ class Importado(BaseModel):
     resumenes: str | None
 
 
+class FuenteMes(BaseModel):
+    fuente: str
+    pesos_centavos: int
+    total_usd_centavos: int
+
+
 class MesHistorial(BaseModel):
     mes: str
     pesos_centavos: int
     dolares_centavos: int
     total_usd_centavos: int
+    fuentes: list[FuenteMes]  # Lo mismo, partido por de dónde vino.
+
+
+class MesCategoria(BaseModel):
+    mes: str
+    movimientos: int
+    pesos_centavos: int
+    total_usd_centavos: int
+
+
+class MesFijo(BaseModel):
+    mes: str
+    moneda: str
+    anotado_centavos: int
+    cobrado_centavos: int
+    pagos: int
+    estado: str
 
 
 class Reporte(BaseModel):
