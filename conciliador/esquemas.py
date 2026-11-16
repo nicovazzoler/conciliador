@@ -250,7 +250,8 @@ class OperacionNueva(BaseModel):
     lado: Literal["compra", "venta"]
     cantidad: str  # Texto decimal: 0,0412. Nunca float.
     precio: str  # USD por unidad.
-    comision: str = "0"
+    comision: str = "0"  # Siempre en USD.
+    moneda: str = "USD"  # La del precio: BRL para una acción de Brasil. Se convierte con el cambio de ese día.
     # Lo leído de una captura dice de dónde viene. Con número, una operación no se carga dos veces.
     fuente: Literal["manual", "quantfury", "binance", "captura"] = "manual"
     numero_operacion: str | None = None
@@ -264,6 +265,7 @@ class OperacionLeida(BaseModel):
     tipo_activo: Literal["cripto", "accion"]
     lado: Literal["compra", "venta"]
     fuente: Literal["quantfury", "binance", "captura"]
+    moneda: str  # La del precio, como se ve en la captura.
     cantidad: str  # Con coma decimal y sin miles, como se carga a mano.
     precio: str
     comision: str
@@ -294,7 +296,8 @@ class OperacionInversion(BaseModel):
     tipo_activo: str
     lado: str
     cantidad: str
-    precio: str
+    precio: str  # En la moneda en que se operó.
+    moneda: str
     comision_centavos: int
     resultado_centavos: int | None  # Solo las ventas: la ganancia o pérdida realizada.
     abierta: bool  # Una compra de un activo que todavía se tiene.

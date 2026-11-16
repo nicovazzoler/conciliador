@@ -4,8 +4,10 @@ Binance tiene una API pública. Yahoo no tiene API oficial: su endpoint de gráf
 casi todas las herramientas gratuitas, pero puede cambiar. Si falla, el activo queda sin precio.
 """
 import json
+import urllib.parse
 import urllib.request
 from collections.abc import Callable
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 AGENTE = "conciliador"
@@ -25,12 +27,57 @@ def cripto(activo: str, traer: Callable[[str], dict] = _json) -> Decimal:
     return Decimal(datos["price"])
 
 
-def accion(activo: str, traer: Callable[[str], dict] = _json) -> Decimal:
-    datos = traer(f"https://query1.finance.yahoo.com/v8/finance/chart/{activo.upper()}?range=1d&interval=1d")
+YAHOO = "https://query1.finance.yahoo.com"
+
+
+def _cotizacion(simbolo: str, traer: Callable[[str], dict]) -> tuple[Decimal, str]:
+    datos = traer(f"{YAHOO}/v8/finance/chart/{urllib.parse.quote(simbolo)}?range=1d&interval=1d")
     meta = datos["chart"]["result"][0]["meta"]
-    if meta.get("currency") != "USD":
-        raise ValueError(f"{activo} cotiza en {meta.get('currency')}, no en USD")
-    return Decimal(str(meta["regularMarketPrice"]))
+    return Decimal(str(meta["regularMarketPrice"])), meta["currency"]
+
+
+def _buscar(activo: str, traer: Callable[[str], dict]) -> str:
+    """WEGE3 no existe en Yahoo como tal: es WEGE3.SA, en la bolsa de San Pablo. Se busca el símbolo."""
+    datos = traer(f"{YAHOO}/v1/finance/search?q={urllib.parse.quote(activo)}&quotesCount=5&newsCount=0")
+    for cotizacion in datos.get("quotes", []):
+        simbolo = cotizacion.get("symbol", "")
+        if cotizacion.get("quoteType") in ("EQUITY", "ETF") and simbolo.split(".")[0] == activo:
+            return simbolo
+    raise ValueError(f"{activo} no aparece en Yahoo")
+
+
+def a_dolares(precio: Decimal, moneda: str, traer: Callable[[str], dict]) -> Decimal:
+    """Convierte con el cambio de hoy. Londres cotiza en peniques (GBp): se pasa a libras."""
+    if moneda == "GBp":
+        precio, moneda = precio / 100, "GBP"
+    if moneda == "USD":
+        return precio
+    cambio, _ = _cotizacion(f"{moneda}USD=X", traer)
+    return precio * cambio
+
+
+def accion(activo: str, traer: Callable[[str], dict] = _json) -> Decimal:
+    """El precio en USD. Si cotiza en otra moneda, se convierte con el cambio de hoy."""
+    activo = activo.upper()
+    try:
+        precio, moneda = _cotizacion(activo, traer)
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        precio, moneda = _cotizacion(_buscar(activo, traer), traer)
+    return a_dolares(precio, moneda, traer)
+
+
+def cambio(moneda: str, dia: date, traer: Callable[[str], dict] = _json) -> Decimal:
+    """Cuántos USD valía una unidad de `moneda` ese día: el último cierre hasta esa fecha."""
+    if moneda == "USD":
+        return Decimal(1)
+    desde = int(datetime.combine(dia - timedelta(days=7), datetime.min.time(), timezone.utc).timestamp())
+    hasta = int(datetime.combine(dia + timedelta(days=1), datetime.min.time(), timezone.utc).timestamp())
+    datos = traer(f"{YAHOO}/v8/finance/chart/{moneda}USD=X?period1={desde}&period2={hasta}&interval=1d")
+    resultado = datos["chart"]["result"][0]
+    cierres = [c for c in resultado["indicators"]["quote"][0]["close"] if c is not None]
+    if not cierres:
+        raise ValueError(f"no hay cambio de {moneda} para {dia}")
+    return Decimal(str(cierres[-1]))
 
 
 def actualizar(activos: dict[str, str], traer: Callable[[str], dict] = _json) -> tuple[dict[str, Decimal], list[str]]:

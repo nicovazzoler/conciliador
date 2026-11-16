@@ -1,5 +1,6 @@
 """API HTTP. Solo traduce: cada endpoint llama a las mismas funciones que la terminal."""
 import hashlib
+import re
 import shutil
 import tempfile
 from dataclasses import asdict
@@ -193,14 +194,21 @@ def crear_app(
             precio = inversiones.decimal_desde(nueva.precio, "precio")
             if cantidad == 0 or precio == 0:
                 raise ValueError("la cantidad y el precio tienen que ser mayores que 0")
+            moneda = nueva.moneda.strip().upper()
+            if not re.fullmatch(r"[A-Z]{3}", moneda):
+                raise ValueError("la moneda va con su código de tres letras: USD, BRL, EUR")
             op = inversiones.Operacion(
                 0, datetime.combine(nueva.fecha, datetime.min.time()), activo, nueva.tipo_activo, nueva.lado,
-                cantidad, precio, inversiones.decimal_desde(nueva.comision or "0", "comisión"),
+                cantidad, precio, inversiones.decimal_desde(nueva.comision or "0", "comisión"), moneda=moneda,
             )
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error))
+        try:
+            tipo_cambio = precios.cambio(moneda, nueva.fecha, traer_precio)
+        except (OSError, ValueError, KeyError, IndexError, TypeError):
+            raise HTTPException(status_code=502, detail=f"no se pudo saber cuánto valía el {moneda} ese día: probá de nuevo")
         numero = nueva.numero_operacion or (huella(op) if nueva.fuente != "manual" else uuid4().hex)
-        if not base.guardar_operacion(motor, nueva.fuente, numero, op):
+        if not base.guardar_operacion(motor, nueva.fuente, numero, op, tipo_cambio):
             raise HTTPException(status_code=409, detail=f"esa operación de {op.activo} ya estaba cargada")
         return {"id": max(o.id for o in base.operaciones(motor))}
 
@@ -376,7 +384,9 @@ def armar_inversiones(motor: base.Engine, mes: str) -> dict:
         "operaciones": [
             {
                 "id": o.id, "fecha": o.fecha_hora.date(), "activo": o.activo, "tipo_activo": o.tipo_activo,
-                "lado": o.lado, "cantidad": inversiones.formato(o.cantidad), "precio": inversiones.formato(o.precio),
+                "lado": o.lado, "cantidad": inversiones.formato(o.cantidad),
+                "precio": inversiones.formato(o.precio_moneda if o.precio_moneda is not None else o.precio),
+                "moneda": o.moneda,
                 "comision_centavos": c(o.comision), "resultado_centavos": c(resultado.realizado.get(o.id)),
                 "abierta": o.lado == "compra" and o.activo in abiertas,
             }

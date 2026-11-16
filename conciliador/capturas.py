@@ -28,7 +28,9 @@ Reglas:
 - activo: el símbolo, en mayúsculas y sin el par contra el dólar (BTC, no BTCUSDT; NVDA, no NVDA.US).
 - tipo_activo: "cripto" o "accion".
 - fuente: "quantfury" o "binance" según la app de la captura; "otra" si no la reconocés.
-- cantidad, precio (en dólares por unidad) y comision (en dólares, "0" si no se ve) como números con punto
+- moneda: el código de la moneda del precio tal como se ve (USD, BRL, EUR). Las acciones de Brasil, como
+  WEGE3, suelen verse en reales (R$): BRL. No conviertas el precio a dólares.
+- cantidad, precio (por unidad, en esa moneda) y comision (en dólares, "0" si no se ve) como números con punto
   decimal y sin separador de miles: 94125.5, 0.0412.
 - numero_operacion: el identificador de la operación si la captura lo muestra; si no, null.
 - Copiá los números tal cual se ven: no los calcules ni los redondees. Si un dato no se lee bien, dejá la
@@ -44,6 +46,7 @@ class OperacionLeida(BaseModel):
     tipo_activo: Literal["cripto", "accion"]
     lado: Literal["compra", "venta"]
     fuente: Literal["quantfury", "binance", "otra"]
+    moneda: str
     cantidad: str
     precio: str
     comision: str
@@ -124,6 +127,7 @@ def limpiar(lectura: Lectura) -> dict:
                 "tipo_activo": op.tipo_activo,
                 "lado": op.lado,
                 "fuente": "captura" if op.fuente == "otra" else op.fuente,
+                "moneda": (op.moneda or "USD").strip().upper()[:3],
                 "cantidad": con_coma(cantidad),
                 "precio": con_coma(precio),
                 "comision": con_coma(comision),
@@ -135,5 +139,5 @@ def limpiar(lectura: Lectura) -> dict:
 
 
 def con_coma(numero: Decimal) -> str:
-    # Sin separador de miles: "94.125" se leería como noventa y cuatro mil al cargarlo.
+    # Con coma decimal y sin separador de miles, como se escribe a mano.
     return format(numero.normalize(), "f").replace(".", ",")
