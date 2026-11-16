@@ -175,6 +175,27 @@ export async function leerCapturas(archivos: File[]): Promise<LecturaCapturas> {
   return leer<LecturaCapturas>(await fetch("/api/operaciones/leer", { method: "POST", body: formulario }));
 }
 
+export type HistoriaInversiones = Esquemas["HistoriaInversiones"];
+export type AvisoNivel = Esquemas["AvisoNivel"];
+
+export async function traerHistoriaInversiones(): Promise<HistoriaInversiones> {
+  return leer<HistoriaInversiones>(await fetch("/api/historia-inversiones"));
+}
+
+/** Vacíos los dos, se borran. */
+export async function guardarNiveles(activo: string, stop_loss: string, take_profit: string, moneda: string): Promise<void> {
+  return leer<void>(await enviar(`/api/niveles/${encodeURIComponent(activo)}`, "PUT", { stop_loss, take_profit, moneda }));
+}
+
+/** Confirma que la posición se cerró en el nivel: carga la venta. */
+export async function cerrarPorNivel(activo: string): Promise<void> {
+  await leer(await enviar(`/api/niveles/${encodeURIComponent(activo)}/cerrar`, "POST"));
+}
+
+export async function descartarNivel(activo: string): Promise<void> {
+  return leer<void>(await enviar(`/api/niveles/${encodeURIComponent(activo)}/descartar`, "POST"));
+}
+
 export async function borrarOperacion(id: number): Promise<void> {
   return leer<void>(await enviar(`/api/operaciones/${id}`, "DELETE"));
 }

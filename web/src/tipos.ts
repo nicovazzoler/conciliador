@@ -347,6 +347,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/niveles/{activo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Guardar Niveles */
+        put: operations["guardar_niveles_api_niveles__activo__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/niveles/{activo}/cerrar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cerrar Por Nivel
+         * @description Confirma que la posición se cerró en el nivel: carga la venta de todo lo que había, a ese precio.
+         */
+        post: operations["cerrar_por_nivel_api_niveles__activo__cerrar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/niveles/{activo}/descartar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Descartar Nivel
+         * @description No se cerró: se borra el aviso y los niveles quedan como estaban.
+         */
+        post: operations["descartar_nivel_api_niveles__activo__descartar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/historia-inversiones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ver Historia
+         * @description La cartera día por día, del último año como mucho. Los precios viejos se piden una vez por día.
+         */
+        get: operations["ver_historia_api_historia_inversiones_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/movimientos/{mes}": {
         parameters: {
             query?: never;
@@ -532,6 +609,30 @@ export interface components {
             codigo: "igual_al_anterior" | "lejos_de_lo_previsto" | "grande_sin_anticipar";
             /** Mensaje */
             mensaje: string;
+        };
+        /**
+         * AvisoNivel
+         * @description El precio llegó al stop loss o al take profit: probablemente la posición se cerró.
+         */
+        AvisoNivel: {
+            /** Activo */
+            activo: string;
+            /**
+             * Tipo
+             * @enum {string}
+             */
+            tipo: "stop_loss" | "take_profit";
+            /** Nivel */
+            nivel: string;
+            /** Moneda */
+            moneda: string;
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Cantidad */
+            cantidad: string;
         };
         /** Avisos */
         Avisos: {
@@ -762,6 +863,13 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HistoriaInversiones */
+        HistoriaInversiones: {
+            /** Puntos */
+            puntos: components["schemas"]["PuntoHistoria"][];
+            /** Sin Precio */
+            sin_precio: string[];
+        };
         /** Importacion */
         Importacion: {
             /** Informes */
@@ -817,6 +925,8 @@ export interface components {
             precios_al: string | null;
             /** Avisos */
             avisos: string[];
+            /** Niveles Tocados */
+            niveles_tocados: components["schemas"]["AvisoNivel"][];
             /** Posiciones */
             posiciones: components["schemas"]["PosicionInversion"][];
             /** Operaciones */
@@ -908,6 +1018,18 @@ export interface components {
             salio_centavos: number;
             /** Movimientos */
             movimientos: components["schemas"]["MovimientoDelMes"][];
+        };
+        /** NivelesEntrada */
+        NivelesEntrada: {
+            /** Stop Loss */
+            stop_loss?: string | null;
+            /** Take Profit */
+            take_profit?: string | null;
+            /**
+             * Moneda
+             * @default USD
+             */
+            moneda?: string;
         };
         /** OperacionInversion */
         OperacionInversion: {
@@ -1082,6 +1204,12 @@ export interface components {
             valor_centavos: number | null;
             /** No Realizado Centavos */
             no_realizado_centavos: number | null;
+            /** Moneda */
+            moneda: string;
+            /** Stop Loss */
+            stop_loss: string | null;
+            /** Take Profit */
+            take_profit: string | null;
         };
         /** PreciosActualizados */
         PreciosActualizados: {
@@ -1089,6 +1217,18 @@ export interface components {
             actualizados: number;
             /** Errores */
             errores: string[];
+        };
+        /** PuntoHistoria */
+        PuntoHistoria: {
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Valor Centavos */
+            valor_centavos: number;
+            /** Invertido Centavos */
+            invertido_centavos: number;
         };
         /** ReglaDetalle */
         ReglaDetalle: {
@@ -1829,6 +1969,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PreciosActualizados"];
+                };
+            };
+        };
+    };
+    guardar_niveles_api_niveles__activo__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activo: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NivelesEntrada"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cerrar_por_nivel_api_niveles__activo__cerrar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guardado"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    descartar_nivel_api_niveles__activo__descartar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activo: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ver_historia_api_historia_inversiones_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoriaInversiones"];
                 };
             };
         };

@@ -1,0 +1,192 @@
+/* Gráficos: marcas finas, grilla recesiva, texto con los colores de texto y nunca con el de la serie. */
+
+.grafico {
+  position: relative;
+  width: 100%;
+  touch-action: pan-y;
+}
+
+.grafico svg {
+  display: block;
+  overflow: visible;
+}
+
+.grafico-grilla {
+  stroke: rgb(255 255 255 / 0.06);
+  stroke-width: 1;
+}
+
+.grafico-eje {
+  fill: var(--suave);
+  font: 500 0.7rem var(--numeros);
+}
+
+.grafico-eje-fuerte {
+  fill: var(--texto);
+  font-weight: 700;
+}
+
+.grafico-cruz {
+  stroke: rgb(255 255 255 / 0.35);
+  stroke-width: 1;
+}
+
+.grafico-tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 0.2rem;
+  min-width: 9rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  background: var(--superficie-2);
+  border: 1px solid var(--borde);
+  pointer-events: none;
+  font-size: 0.8rem;
+  z-index: 2;
+}
+
+.grafico-tooltip-fecha {
+  color: var(--suave);
+  font: 500 0.72rem var(--numeros);
+}
+
+.grafico-tooltip-fila {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.grafico-tooltip-fila strong {
+  font: 600 0.82rem var(--numeros);
+}
+
+.grafico-tooltip-fila span:last-child {
+  color: var(--suave);
+}
+
+.clave-linea {
+  display: inline-block;
+  flex: none;
+  width: 0.9rem;
+  height: 2px;
+  border-radius: 2px;
+}
+
+.clave-caja {
+  display: inline-block;
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 3px;
+}
+
+.grafico-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--suave);
+  font-size: 0.82rem;
+}
+
+.grafico-leyenda li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.columna:hover rect[fill="transparent"],
+.columna.elegida rect[fill="transparent"] {
+  fill: rgb(255 255 255 / 0.04);
+}
+
+/* La rueda: el número en el centro, la leyenda al lado. */
+
+.rueda {
+  position: relative;
+  flex: none;
+}
+
+.rueda svg circle {
+  transition: opacity 0.15s ease, stroke-width 0.15s ease;
+}
+
+.rueda-centro {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.rueda-centro strong {
+  font: 700 1.35rem var(--letra);
+  font-stretch: 125%;
+}
+
+.rueda-centro span {
+  color: var(--suave);
+  font-size: 0.78rem;
+}
+
+/* La tabla, para quien no quiere leer el gráfico. */
+
+.tabla-datos {
+  margin-top: 0.75rem;
+  color: var(--suave);
+  font-size: 0.85rem;
+}
+
+.tabla-datos summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.tabla-datos table {
+  width: 100%;
+  margin-top: 0.5rem;
+  border-collapse: collapse;
+  font: 500 0.8rem var(--numeros);
+}
+
+.tabla-datos th {
+  text-align: left;
+  font: 600 0.75rem var(--letra);
+  color: var(--suave);
+  padding: 0.3rem 0.4rem;
+}
+
+.tabla-datos td {
+  padding: 0.3rem 0.4rem;
+  border-top: 1px solid var(--vidrio-borde);
+  color: var(--texto);
+}
+
+/* Variantes de contenedor: no todo es una tarjeta igual. */
+
+/* Abierto: sin caja, con un filete arriba. Para lo que es lectura, como un gráfico. */
+.comprobante.abierto {
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--vidrio-borde);
+  border-radius: 0;
+  padding: 1rem 0 0;
+}
+
+/* Hundido: un panel más oscuro, como una bandeja, para tablas de trabajo. */
+.comprobante.hundido {
+  background: rgb(0 0 0 / 0.22);
+  border-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rueda svg circle {
+    transition: none;
+  }
+}
