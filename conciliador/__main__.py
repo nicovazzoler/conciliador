@@ -8,8 +8,11 @@ from conciliador import base, manual, reporte
 from conciliador.importar import actualizar_cotizaciones, importar_carpeta
 from conciliador.revisar import revisar
 
+# La carpeta del proyecto: la base, entrada/ y .env se buscan acá aunque el comando se corra desde otra.
+RAIZ = Path(__file__).resolve().parent.parent
 
-def clave_nacion(ruta_env: Path = Path(".env")) -> str:
+
+def clave_nacion(ruta_env: Path = RAIZ / ".env") -> str:
     """La clave del PDF de Nación se lee de .env y nunca se muestra."""
     if "BNA_PDF_CLAVE" in os.environ:
         return os.environ["BNA_PDF_CLAVE"]
@@ -24,7 +27,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="conciliador")
     comandos = parser.add_subparsers(dest="comando", required=True)
     importar = comandos.add_parser("importar", help="importa los archivos de una carpeta")
-    importar.add_argument("carpeta", nargs="?", type=Path, default=Path("entrada"))
+    importar.add_argument("carpeta", nargs="?", type=Path, default=RAIZ / "entrada")
     comandos.add_parser("revisar", help="categoriza los gastos grandes sin regla")
     comandos.add_parser("migrar", help="respalda la base y la actualiza")
     gasto = comandos.add_parser("gasto", help="registra un gasto que no viene en un PDF")
@@ -55,7 +58,7 @@ def main() -> None:
         print(json.dumps(api.esquema_openapi(), ensure_ascii=False, indent=2))
         return
 
-    ruta = Path(os.environ.get("CONCILIADOR_DB", "conciliador.db"))
+    ruta = Path(os.environ.get("CONCILIADOR_DB", RAIZ / "conciliador.db"))
     if argumentos.comando == "migrar":
         respaldo = base.migrar(ruta)
         print(f"Base actualizada. Respaldo: {respaldo}" if respaldo else "La base ya estaba al día.")
@@ -64,7 +67,7 @@ def main() -> None:
         from conciliador import api  # Solo acá: el resto de los comandos no necesita FastAPI.
 
         try:
-            api.servir(ruta, Path("entrada"), clave_nacion())
+            api.servir(ruta, RAIZ / "entrada", clave_nacion())
         except base.BaseDesactualizada as error:
             raise SystemExit(str(error))
         return
