@@ -61,6 +61,7 @@ export function LectorCapturas({ alGuardar, alFallar }: { alGuardar: (texto: str
           precio: f.precio,
           comision: f.comision || "0",
           fuente: f.fuente,
+          moneda: f.moneda,
           numero_operacion: f.numero_operacion,
         });
         guardadas += 1;
@@ -153,6 +154,7 @@ function FilaLeida({ fila: f, alCambiar }: { fila: Fila; alCambiar: (cambios: Pa
           </span>
           <strong className="numeros">
             {f.activo} {decimal(f.cantidad.replace(",", "."), 8)} @ {decimal(f.precio.replace(",", "."))}
+            {f.moneda !== "USD" && ` ${f.moneda}`}
           </strong>
           {f.nota && <span className="lector-nota">{f.nota}</span>}
         </div>
@@ -194,14 +196,20 @@ function FilaLeida({ fila: f, alCambiar }: { fila: Fila; alCambiar: (cambios: Pa
               <input inputMode="decimal" value={f.cantidad} onChange={(e) => alCambiar({ cantidad: e.target.value })} />
             </label>
             <label>
-              Precio (U$D)
+              Precio ({f.moneda})
               <input inputMode="decimal" value={f.precio} onChange={(e) => alCambiar({ precio: e.target.value })} />
             </label>
           </div>
-          <label>
-            Comisión (U$D)
-            <input inputMode="decimal" value={f.comision} onChange={(e) => alCambiar({ comision: e.target.value })} />
-          </label>
+          <div className="dos-columnas">
+            <label>
+              Moneda
+              <input maxLength={3} value={f.moneda} onChange={(e) => alCambiar({ moneda: e.target.value.toUpperCase() })} />
+            </label>
+            <label>
+              Comisión (U$D)
+              <input inputMode="decimal" value={f.comision} onChange={(e) => alCambiar({ comision: e.target.value })} />
+            </label>
+          </div>
         </div>
       )}
     </li>

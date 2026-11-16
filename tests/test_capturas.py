@@ -14,13 +14,13 @@ def lectura_falsa(imagenes):
     return capturas.limpiar(capturas.Lectura(
         operaciones=[
             capturas.OperacionLeida(fecha="2026-10-02", activo="btc", tipo_activo="cripto", lado="compra",
-                                    fuente="quantfury", cantidad="0.05", precio="60000", comision="0",
+                                    fuente="quantfury", moneda="USD", cantidad="0.05", precio="60000", comision="0",
                                     numero_operacion=None, nota=None),
             capturas.OperacionLeida(fecha="2026-10-09", activo="NVDA", tipo_activo="accion", lado="venta",
-                                    fuente="otra", cantidad="3", precio="94.125", comision="0.5",
+                                    fuente="otra", moneda="usd", cantidad="3", precio="94.125", comision="0.5",
                                     numero_operacion="Q-123", nota="short"),
             capturas.OperacionLeida(fecha="ayer", activo="ETH", tipo_activo="cripto", lado="compra",
-                                    fuente="binance", cantidad="1", precio="3000", comision="0",
+                                    fuente="binance", moneda="USD", cantidad="1", precio="3000", comision="0",
                                     numero_operacion=None, nota=None),
         ],
         avisos=[],
@@ -38,7 +38,6 @@ def test_lee_las_capturas_sin_guardar_nada(cliente):
     datos = respuesta.json()
     assert [o["activo"] for o in datos["operaciones"]] == ["BTC", "NVDA"]
     nvda = datos["operaciones"][1]
-    # Con coma y sin miles: "94.125" se leería como noventa y cuatro mil al cargarlo.
     assert (nvda["precio"], nvda["comision"], nvda["fuente"]) == ("94,125", "0,5", "captura")
     assert len(datos["avisos"]) == 1  # La de fecha ilegible queda afuera, con aviso.
     assert cliente.get("/api/inversiones/2026-10").json()["operaciones"] == []

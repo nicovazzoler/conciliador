@@ -282,6 +282,7 @@ function FilaOperacion({ operacion: o, alBorrar, alFallar }: { operacion: Operac
         </span>
         <strong className="numeros">
           {o.activo} {decimal(o.cantidad, 8)} @ {decimal(o.precio)}
+          {o.moneda !== "USD" && ` ${o.moneda}`}
         </strong>
       </div>
       <div className="item-derecha">
@@ -319,6 +320,7 @@ function FormularioOperacion({ alCerrar, alGuardar, alFallar }: { alCerrar: () =
     cantidad: "",
     precio: "",
     comision: "",
+    moneda: "USD",
   });
   const cambiar = <K extends keyof OperacionNueva>(campo: K, valor: OperacionNueva[K]) =>
     setDatos((anterior) => ({ ...anterior, [campo]: valor }));
@@ -326,7 +328,7 @@ function FormularioOperacion({ alCerrar, alGuardar, alFallar }: { alCerrar: () =
   async function guardar(evento: FormEvent) {
     evento.preventDefault();
     try {
-      await cargarOperacion({ ...datos, comision: datos.comision || "0" });
+      await cargarOperacion({ ...datos, comision: datos.comision || "0", moneda: datos.moneda || "USD" });
       alGuardar(`${datos.lado === "compra" ? "Compra" : "Venta"} de ${datos.activo.toUpperCase()} guardada.`);
     } catch (error) {
       alFallar((error as Error).message);
@@ -353,15 +355,31 @@ function FormularioOperacion({ alCerrar, alGuardar, alFallar }: { alCerrar: () =
           <input required inputMode="decimal" value={datos.cantidad} onChange={(e) => cambiar("cantidad", e.target.value)} placeholder="0,0412" />
         </label>
         <label>
-          Precio por unidad (U$D)
-          <input required inputMode="decimal" value={datos.precio} onChange={(e) => cambiar("precio", e.target.value)} placeholder="94.120,55" />
+          Precio por unidad
+          <input required inputMode="decimal" value={datos.precio} onChange={(e) => cambiar("precio", e.target.value)} placeholder="182,40" />
         </label>
       </div>
-      <label>
-        Comisión (U$D, opcional)
-        <input inputMode="decimal" value={datos.comision ?? ""} onChange={(e) => cambiar("comision", e.target.value)} placeholder="0" />
-      </label>
-      <p className="nota">Usá coma para los decimales: 0,0412. El punto solo, como en 94.120, se lee como miles.</p>
+      <div className="dos-columnas">
+        <label>
+          Moneda del precio
+          <input
+            required
+            maxLength={3}
+            value={datos.moneda ?? "USD"}
+            onChange={(e) => cambiar("moneda", e.target.value.toUpperCase())}
+            placeholder="USD"
+            autoCapitalize="characters"
+          />
+        </label>
+        <label>
+          Comisión (U$D)
+          <input inputMode="decimal" value={datos.comision ?? ""} onChange={(e) => cambiar("comision", e.target.value)} placeholder="0" />
+        </label>
+      </div>
+      <p className="nota">
+        Punto o coma, los dos sirven para los decimales. Una acción de Brasil, como WEGE3, va en BRL: se pasa a dólares con el
+        cambio de ese día.
+      </p>
       <button className="principal">Guardar operación</button>
       <button type="button" className="secundario" onClick={alCerrar}>
         Cancelar

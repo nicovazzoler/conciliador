@@ -928,6 +928,8 @@ export interface components {
             cantidad: string;
             /** Precio */
             precio: string;
+            /** Moneda */
+            moneda: string;
             /** Comision Centavos */
             comision_centavos: number;
             /** Resultado Centavos */
@@ -962,6 +964,8 @@ export interface components {
              * @enum {string}
              */
             fuente: "quantfury" | "binance" | "captura";
+            /** Moneda */
+            moneda: string;
             /** Cantidad */
             cantidad: string;
             /** Precio */
@@ -1001,6 +1005,11 @@ export interface components {
              * @default 0
              */
             comision?: string;
+            /**
+             * Moneda
+             * @default USD
+             */
+            moneda?: string;
             /**
              * Fuente
              * @default manual

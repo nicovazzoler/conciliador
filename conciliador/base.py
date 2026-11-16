@@ -331,8 +331,10 @@ class OperacionInversion(Base):
     tipo_activo: Mapped[str] = mapped_column(String(10))
     lado: Mapped[str] = mapped_column(String(10))
     cantidad: Mapped[str] = mapped_column(String(40))
-    precio: Mapped[str] = mapped_column(String(40))
-    comision: Mapped[str] = mapped_column(String(40))
+    precio: Mapped[str] = mapped_column(String(40))  # En la moneda en que se operó.
+    comision: Mapped[str] = mapped_column(String(40))  # Siempre en USD.
+    moneda: Mapped[str] = mapped_column(String(3), server_default="USD")
+    tipo_cambio: Mapped[str] = mapped_column(String(40), server_default="1")  # USD por unidad de moneda, ese día.
 
 
 class PrecioActivo(Base):
@@ -346,15 +348,18 @@ class PrecioActivo(Base):
     origen: Mapped[str] = mapped_column(String(20))
 
 
-def guardar_operacion(motor: Engine, fuente: str, numero: str, op) -> bool:
-    """Guarda una operación. Devuelve False si ya estaba: se reconoce por fuente y número."""
+def guardar_operacion(motor: Engine, fuente: str, numero: str, op, tipo_cambio: Decimal = Decimal(1)) -> bool:
+    """Guarda una operación. Devuelve False si ya estaba: se reconoce por fuente y número.
+
+    `op.precio` va en `op.moneda`; `tipo_cambio` son los USD que valía una unidad de esa moneda ese día.
+    """
     with Session(motor) as sesion, sesion.begin():
         orden = (
             insert(OperacionInversion)
             .values(
                 fuente=fuente, numero_operacion=numero, fecha_hora=op.fecha_hora, activo=op.activo,
                 tipo_activo=op.tipo_activo, lado=op.lado, cantidad=str(op.cantidad), precio=str(op.precio),
-                comision=str(op.comision),
+                comision=str(op.comision), moneda=op.moneda, tipo_cambio=str(tipo_cambio),
             )
             .on_conflict_do_nothing(index_elements=["fuente", "numero_operacion"])
         )
@@ -366,8 +371,9 @@ def operaciones(motor: Engine) -> list:
 
     with Session(motor) as sesion:
         return [
-            Operacion(o.id, o.fecha_hora, o.activo, o.tipo_activo, o.lado, Decimal(o.cantidad), Decimal(o.precio),
-                      Decimal(o.comision), o.fuente)
+            Operacion(o.id, o.fecha_hora, o.activo, o.tipo_activo, o.lado, Decimal(o.cantidad),
+                      Decimal(o.precio) * Decimal(o.tipo_cambio), Decimal(o.comision), o.fuente, o.moneda,
+                      Decimal(o.precio))
             for o in sesion.scalars(select(OperacionInversion))
         ]
 

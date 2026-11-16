@@ -49,7 +49,9 @@ def test_decimales_con_coma_o_punto_y_nunca_float():
     assert inversiones.decimal_desde("0,0412", "cantidad") == Decimal("0.0412")
     assert inversiones.decimal_desde("94.120,55", "precio") == Decimal("94120.55")
     assert inversiones.decimal_desde("94120.55", "precio") == Decimal("94120.55")
-    assert inversiones.decimal_desde("90.000", "precio") == Decimal("90000")  # Miles, como se escribe acá.
+    assert inversiones.decimal_desde("251.75", "precio") == Decimal("251.75")  # Punto o coma: los dos son decimal.
+    assert inversiones.decimal_desde("94,120.55", "precio") == Decimal("94120.55")
+    assert inversiones.decimal_desde("1.234.567", "cantidad") == Decimal("1234567")
     assert inversiones.decimal_desde("1.5", "cantidad") == Decimal("1.5")
     for malo in ("abc", "-1", "NaN"):
         with pytest.raises(ValueError):
@@ -74,7 +76,7 @@ def test_precios_por_tipo_y_uno_que_falla_no_frena_a_los_demas():
 def test_cargar_operaciones_y_ver_la_cartera_por_la_api(tmp_path):
     cliente = TestClient(api.crear_app(tmp_path / "p.db", traer_precio=respuesta_falsa))
     for operacion in (
-        {"fecha": "2026-11-01", "activo": "btc", "tipo_activo": "cripto", "lado": "compra", "cantidad": "0,5", "precio": "90.000"},
+        {"fecha": "2026-11-01", "activo": "btc", "tipo_activo": "cripto", "lado": "compra", "cantidad": "0,5", "precio": "90000"},
         {"fecha": "2026-11-02", "activo": "BTC", "tipo_activo": "cripto", "lado": "venta", "cantidad": "0,1", "precio": "110000", "comision": "1"},
     ):
         assert cliente.post("/api/operaciones", json=operacion).status_code == 201

@@ -3,7 +3,6 @@
 Las cantidades y los precios no son centavos: 0,0412 BTC a U$D 94.120,55 no entra en un entero.
 Se calcula con Decimal y se redondea a centavos solo al final, para mostrar.
 """
-import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -21,9 +20,11 @@ class Operacion:
     tipo_activo: str
     lado: str
     cantidad: Decimal
-    precio: Decimal  # USD por unidad.
+    precio: Decimal  # USD por unidad, ya convertido si se operó en otra moneda.
     comision: Decimal  # USD.
     fuente: str = "manual"
+    moneda: str = "USD"  # La moneda en que se operó.
+    precio_moneda: Decimal | None = None  # El precio en esa moneda, para mostrarlo como se operó.
 
 
 @dataclass
@@ -90,12 +91,19 @@ def a_centavos(valor: Decimal | None) -> int | None:
 
 
 def decimal_desde(texto: str, que: str) -> Decimal:
-    """Acepta 0,0412 o 0.0412, y 94.120,55 o 94120.55. Nunca pasa por float."""
+    """Punto o coma, los dos valen como decimal: 0,0412 y 0.0412; 251,75 y 251.75. Nunca pasa por float.
+
+    Si están los dos, el último es el decimal: 94.120,55 y 94,120.55. Uno repetido es de miles: 1.234.567.
+    """
     limpio = texto.strip().replace(" ", "")
-    if "," in limpio:
-        limpio = limpio.replace(".", "").replace(",", ".")
-    elif re.fullmatch(r"\d{1,3}(\.\d{3})+", limpio):
-        limpio = limpio.replace(".", "")  # 90.000 es noventa mil, como se escribe acá.
+    if "," in limpio and "." in limpio:
+        miles = "." if limpio.rfind(",") > limpio.rfind(".") else ","
+        limpio = limpio.replace(miles, "").replace(",", ".")
+    else:
+        for signo in (",", "."):
+            if limpio.count(signo) > 1:
+                limpio = limpio.replace(signo, "")
+        limpio = limpio.replace(",", ".")
     try:
         valor = Decimal(limpio)
     except InvalidOperation:
