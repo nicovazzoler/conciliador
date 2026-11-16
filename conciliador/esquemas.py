@@ -287,6 +287,20 @@ class PosicionInversion(BaseModel):
     precio: str | None
     valor_centavos: int | None
     no_realizado_centavos: int | None
+    moneda: str  # La de la última operación: en esa van el stop loss y el take profit.
+    stop_loss: str | None
+    take_profit: str | None
+
+
+class AvisoNivel(BaseModel):
+    """El precio llegó al stop loss o al take profit: probablemente la posición se cerró."""
+
+    activo: str
+    tipo: Literal["stop_loss", "take_profit"]
+    nivel: str
+    moneda: str
+    fecha: date
+    cantidad: str  # Lo que quedaría vendido si se confirma.
 
 
 class OperacionInversion(BaseModel):
@@ -314,6 +328,7 @@ class Inversiones(BaseModel):
     sin_precio: list[str]
     precios_al: datetime | None
     avisos: list[str]
+    niveles_tocados: list[AvisoNivel]
     posiciones: list[PosicionInversion]
     operaciones: list[OperacionInversion]
 
@@ -321,6 +336,23 @@ class Inversiones(BaseModel):
 class PreciosActualizados(BaseModel):
     actualizados: int
     errores: list[str]
+
+
+class NivelesEntrada(BaseModel):
+    stop_loss: str | None = None  # Texto decimal; vacío o null: sin stop loss.
+    take_profit: str | None = None
+    moneda: str = "USD"
+
+
+class PuntoHistoria(BaseModel):
+    fecha: date
+    valor_centavos: int
+    invertido_centavos: int
+
+
+class HistoriaInversiones(BaseModel):
+    puntos: list[PuntoHistoria]
+    sin_precio: list[str]  # Activos que no entran en la historia porque no se encontró su precio.
 
 
 # Movimientos y categorías.

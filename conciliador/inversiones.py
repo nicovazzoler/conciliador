@@ -124,3 +124,28 @@ def por_mes(operaciones: list[Operacion]) -> dict[str, list[Operacion]]:
     for op in operaciones:
         meses[op.fecha_hora.strftime("%Y-%m")].append(op)
     return meses
+
+
+def historia(operaciones: list[Operacion], cierres: dict[str, dict], desde, hasta) -> list[dict]:
+    """Para cada día: cuánto valía lo que se tenía y cuánto se había puesto en eso.
+
+    Solo cuentan los activos con precio ese día, en las dos cifras, para que se puedan comparar.
+    """
+    from datetime import timedelta
+
+    from conciliador.precios import ultimo
+
+    puntos, dia = [], desde
+    ordenadas = sorted(operaciones, key=lambda o: (o.fecha_hora, o.id))
+    while dia <= hasta:
+        hechas = [o for o in ordenadas if o.fecha_hora.date() <= dia]
+        precios = {a: p for a, serie in cierres.items() if (p := ultimo(serie, dia)) is not None}
+        con_precio = [p for p in calcular(hechas, precios).posiciones if p.valor is not None]
+        if con_precio:
+            puntos.append({
+                "fecha": dia,
+                "valor": sum((p.valor for p in con_precio), Decimal(0)),
+                "invertido": sum((p.costo for p in con_precio), Decimal(0)),
+            })
+        dia += timedelta(days=1)
+    return puntos
