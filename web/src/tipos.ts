@@ -293,6 +293,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/operaciones/leer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Leer Operaciones
+         * @description Lee las capturas con Claude. No guarda nada: devuelve lo leído para revisarlo.
+         */
+        post: operations["leer_operaciones_api_operaciones_leer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/operaciones/{operacion_id}": {
         parameters: {
             query?: never;
@@ -520,6 +540,11 @@ export interface components {
         };
         /** Body_importar_archivos_api_importar_post */
         Body_importar_archivos_api_importar_post: {
+            /** Archivos */
+            archivos: string[];
+        };
+        /** Body_leer_operaciones_api_operaciones_leer_post */
+        Body_leer_operaciones_api_operaciones_leer_post: {
             /** Archivos */
             archivos: string[];
         };
@@ -797,6 +822,13 @@ export interface components {
             /** Operaciones */
             operaciones: components["schemas"]["OperacionInversion"][];
         };
+        /** LecturaCapturas */
+        LecturaCapturas: {
+            /** Operaciones */
+            operaciones: components["schemas"]["OperacionLeida"][];
+            /** Avisos */
+            avisos: string[];
+        };
         /** Manual */
         Manual: {
             /** Id */
@@ -903,6 +935,44 @@ export interface components {
             /** Abierta */
             abierta: boolean;
         };
+        /**
+         * OperacionLeida
+         * @description Una operación leída de una captura: todavía no está guardada.
+         */
+        OperacionLeida: {
+            /**
+             * Fecha
+             * Format: date
+             */
+            fecha: string;
+            /** Activo */
+            activo: string;
+            /**
+             * Tipo Activo
+             * @enum {string}
+             */
+            tipo_activo: "cripto" | "accion";
+            /**
+             * Lado
+             * @enum {string}
+             */
+            lado: "compra" | "venta";
+            /**
+             * Fuente
+             * @enum {string}
+             */
+            fuente: "quantfury" | "binance" | "captura";
+            /** Cantidad */
+            cantidad: string;
+            /** Precio */
+            precio: string;
+            /** Comision */
+            comision: string;
+            /** Numero Operacion */
+            numero_operacion: string | null;
+            /** Nota */
+            nota: string | null;
+        };
         /** OperacionNueva */
         OperacionNueva: {
             /**
@@ -931,6 +1001,14 @@ export interface components {
              * @default 0
              */
             comision?: string;
+            /**
+             * Fuente
+             * @default manual
+             * @enum {string}
+             */
+            fuente?: "manual" | "quantfury" | "binance" | "captura";
+            /** Numero Operacion */
+            numero_operacion?: string | null;
         };
         /** PagoNuevo */
         PagoNuevo: {
@@ -1651,6 +1729,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Guardado"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    leer_operaciones_api_operaciones_leer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_leer_operaciones_api_operaciones_leer_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LecturaCapturas"];
                 };
             };
             /** @description Validation Error */

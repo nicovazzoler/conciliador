@@ -251,6 +251,29 @@ class OperacionNueva(BaseModel):
     cantidad: str  # Texto decimal: 0,0412. Nunca float.
     precio: str  # USD por unidad.
     comision: str = "0"
+    # Lo leído de una captura dice de dónde viene. Con número, una operación no se carga dos veces.
+    fuente: Literal["manual", "quantfury", "binance", "captura"] = "manual"
+    numero_operacion: str | None = None
+
+
+class OperacionLeida(BaseModel):
+    """Una operación leída de una captura: todavía no está guardada."""
+
+    fecha: date
+    activo: str
+    tipo_activo: Literal["cripto", "accion"]
+    lado: Literal["compra", "venta"]
+    fuente: Literal["quantfury", "binance", "captura"]
+    cantidad: str  # Con coma decimal y sin miles, como se carga a mano.
+    precio: str
+    comision: str
+    numero_operacion: str | None
+    nota: str | None  # Lo que convenga revisar de esta operación.
+
+
+class LecturaCapturas(BaseModel):
+    operaciones: list[OperacionLeida]
+    avisos: list[str]
 
 
 class PosicionInversion(BaseModel):

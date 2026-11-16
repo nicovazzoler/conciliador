@@ -13,6 +13,7 @@ import {
 import { Comprobante, Renglon, Sello } from "./comprobante";
 import { Segmentado } from "./controles";
 import { decimal, hoy, importe, mesActual, moverMes, nombreMes, plata } from "./formato";
+import { LectorCapturas } from "./LectorCapturas";
 
 type Vista = "portafolio" | "trading";
 type Mensaje = { tipo: "bien" | "error"; texto: string } | null;
@@ -241,6 +242,7 @@ function Trading({
               <Plus size={16} aria-hidden="true" /> Cargar una operación
             </button>
           )}
+          <LectorCapturas alGuardar={alGuardar} alFallar={alFallar} />
         </div>
 
         <Comprobante titulo="Operaciones" className="panel">

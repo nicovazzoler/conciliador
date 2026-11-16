@@ -1,4 +1,5 @@
 """API HTTP. Solo traduce: cada endpoint llama a las mismas funciones que la terminal."""
+import hashlib
 import shutil
 import tempfile
 from dataclasses import asdict
@@ -13,7 +14,7 @@ from fastapi import FastAPI, HTTPException, Response, UploadFile
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from conciliador import base, clasificar, cotizaciones, esquemas, importar, inversiones, manual, plan, precios, reporte, revisar
+from conciliador import base, capturas, clasificar, cotizaciones, esquemas, importar, inversiones, manual, plan, precios, reporte, revisar
 
 MAXIMO_ARCHIVO = 20 * 1024 * 1024  # 20 MB: un resumen pesa menos de 1.
 MINIMO_REGLA = 3  # Una regla "Pa" alcanzaría a Pago, Pasaje, Panadería...
@@ -29,11 +30,17 @@ def crear_app(
     clave_nacion: str = "",
     traer_cotizaciones=cotizaciones.traer,
     traer_precio=precios._json,
+    clave_anthropic: str = "",
+    leer_capturas=None,
 ) -> FastAPI:
     """Una app por base: los tests usan una temporal y el comando `web`, la real.
 
-    La clave del PDF de Nación la recibe el servidor al arrancar y nunca viaja a la página.
+    La clave del PDF de Nación y la de Anthropic las recibe el servidor al arrancar y nunca viajan a la página.
     """
+    if leer_capturas is None:
+        def leer_capturas(imagenes):
+            return capturas.leer(imagenes, clave_anthropic)
+
     motor = base.conectar(ruta_db)  # Si la base está desactualizada, falla al arrancar.
     app = FastAPI(title="Conciliador")
 
@@ -192,8 +199,28 @@ def crear_app(
             )
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error))
-        base.guardar_operacion(motor, "manual", uuid4().hex, op)
+        numero = nueva.numero_operacion or (huella(op) if nueva.fuente != "manual" else uuid4().hex)
+        if not base.guardar_operacion(motor, nueva.fuente, numero, op):
+            raise HTTPException(status_code=409, detail=f"esa operación de {op.activo} ya estaba cargada")
         return {"id": max(o.id for o in base.operaciones(motor))}
+
+    @app.post("/api/operaciones/leer", response_model=esquemas.LecturaCapturas)
+    def leer_operaciones(archivos: list[UploadFile]):
+        """Lee las capturas con Claude. No guarda nada: devuelve lo leído para revisarlo."""
+        if not archivos or len(archivos) > capturas.MAXIMO_CAPTURAS:
+            raise HTTPException(status_code=422, detail=f"mandá entre 1 y {capturas.MAXIMO_CAPTURAS} capturas")
+        imagenes = []
+        try:
+            for archivo in archivos:
+                contenido = archivo.file.read()
+                capturas.revisar_captura(contenido, archivo.content_type)
+                imagenes.append((contenido, archivo.content_type))
+        except capturas.CapturaError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+        try:
+            return leer_capturas(imagenes)
+        except capturas.CapturaError as error:
+            raise HTTPException(status_code=502, detail=str(error))
 
     @app.delete("/api/operaciones/{operacion_id}", status_code=204)
     def borrar_operacion(operacion_id: int):
@@ -391,5 +418,11 @@ def _rechazado(nombre: str, motivo: str) -> dict:
     return asdict(importar.Informe(nombre, errores=[motivo]))
 
 
-def servir(ruta_db: Path, entrada: Path = Path("entrada"), clave_nacion: str = "") -> None:
-    uvicorn.run(crear_app(ruta_db, entrada, clave_nacion), host=HOST, port=PUERTO)
+def huella(op: inversiones.Operacion) -> str:
+    """Sin número de operación, lo leído se reconoce por sus datos: la misma captura no carga dos veces."""
+    datos = f"{op.fecha_hora.date()}|{op.activo}|{op.lado}|{op.cantidad.normalize()}|{op.precio.normalize()}"
+    return "captura-" + hashlib.sha256(datos.encode()).hexdigest()[:16]
+
+
+def servir(ruta_db: Path, entrada: Path = Path("entrada"), clave_nacion: str = "", clave_anthropic: str = "") -> None:
+    uvicorn.run(crear_app(ruta_db, entrada, clave_nacion, clave_anthropic=clave_anthropic), host=HOST, port=PUERTO)
