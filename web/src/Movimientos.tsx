@@ -22,14 +22,25 @@ const TIPOS: Record<string, string> = {
   sin_clasificar: "sin clasificar",
 };
 
-export function Movimientos({ mesInicial }: { mesInicial?: string }) {
+/** "dia:2026-10-05", "plan:Internet", "categoria:Salud" o "buscar:texto", desde Gastos. */
+function leerFiltro(filtro?: string): { dia?: string; plan?: string; categoria?: string; buscar?: string } {
+  const [clave, ...resto] = (filtro ?? "").split(":");
+  const valor = resto.join(":");
+  if (!valor) return {};
+  return clave === "dia" || clave === "plan" || clave === "categoria" || clave === "buscar" ? { [clave]: valor } : {};
+}
+
+export function Movimientos({ mesInicial, filtro: filtroDeLaDireccion }: { mesInicial?: string; filtro?: string }) {
+  const inicial = leerFiltro(filtroDeLaDireccion);
+  const [dia, setDia] = useState(inicial.dia ?? "");
+  const [plan, setPlan] = useState(inicial.plan ?? "");
   const [mes, setMes] = useState(mesInicial ?? mesActual());
   const [datos, setDatos] = useState<MovimientosDelMes | null>(null);
   const [categorias, setCategorias] = useState<string[]>([]);
   const [filtro, setFiltro] = useState<Filtro>("todo");
   const [fuente, setFuente] = useState("");
-  const [categoria, setCategoria] = useState("");
-  const [busqueda, setBusqueda] = useState("");
+  const [categoria, setCategoria] = useState(inicial.categoria ?? "");
+  const [busqueda, setBusqueda] = useState(inicial.buscar ?? "");
   const [abierto, setAbierto] = useState<number | null>(null);
   const [mensaje, setMensaje] = useState<Mensaje>(null);
 
@@ -55,9 +66,11 @@ export function Movimientos({ mesInicial }: { mesInicial?: string }) {
           (filtro === "otros" && !GASTOS.has(m.tipo) && m.tipo !== "ingreso")) &&
         (!fuente || m.fuente === fuente) &&
         (!categoria || m.categoria === categoria) &&
+        (!dia || m.fecha === dia) &&
+        (!plan || m.plan_concepto === plan) &&
         (!texto || m.descripcion.toLowerCase().includes(texto)),
     );
-  }, [datos, filtro, fuente, categoria, busqueda]);
+  }, [datos, filtro, fuente, categoria, busqueda, dia, plan]);
 
   const porDia = useMemo(() => {
     const dias = new Map<string, MovimientoDelMes[]>();
@@ -128,6 +141,21 @@ export function Movimientos({ mesInicial }: { mesInicial?: string }) {
         </div>
       </div>
 
+      {(dia || plan) && (
+        <p className="filtro-activo">
+          {dia ? `Solo el ${nombreDia(dia).toLowerCase()}` : `Solo lo de ${plan}, del plan`}
+          <button
+            type="button"
+            className="boton-texto"
+            onClick={() => {
+              setDia("");
+              setPlan("");
+            }}
+          >
+            Ver todo el mes
+          </button>
+        </p>
+      )}
       {mensaje && (
         <p className={`mensaje mensaje-${mensaje.tipo}`} role="status">
           {mensaje.texto}

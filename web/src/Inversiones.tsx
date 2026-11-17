@@ -5,14 +5,21 @@ import {
   actualizarPrecios,
   borrarOperacion,
   cargarOperacion,
+  cerrarPorNivel,
+  descartarNivel,
+  guardarNiveles,
+  traerHistoriaInversiones,
   traerInversiones,
+  type AvisoNivel,
+  type HistoriaInversiones,
   type Inversiones as Datos,
   type OperacionInversion,
   type OperacionNueva,
 } from "./api";
 import { Comprobante, Renglon, Sello } from "./comprobante";
 import { Segmentado } from "./controles";
-import { decimal, hoy, importe, mesActual, moverMes, nombreMes, plata } from "./formato";
+import { decimal, diaYMes, hoy, importe, mesActual, moverMes, nombreMes, plata } from "./formato";
+import { enDolares, GraficoLinea, Leyenda, porMes, Rueda } from "./graficos";
 import { LectorCapturas } from "./LectorCapturas";
 
 type Vista = "portafolio" | "trading";
@@ -76,7 +83,16 @@ export function Inversiones() {
       {datos === null ? (
         <p className="nota">Cargando…</p>
       ) : vista === "portafolio" ? (
-        <Portafolio datos={datos} actualizando={actualizando} alActualizar={precios} />
+        <Portafolio
+          datos={datos}
+          actualizando={actualizando}
+          alActualizar={precios}
+          alGuardar={(texto) => {
+            setMensaje({ tipo: "bien", texto });
+            recargar();
+          }}
+          alFallar={(texto) => setMensaje({ tipo: "error", texto })}
+        />
       ) : (
         <Trading
           datos={datos}
@@ -93,9 +109,19 @@ export function Inversiones() {
   );
 }
 
-function Portafolio({ datos, actualizando, alActualizar }: { datos: Datos; actualizando: boolean; alActualizar: () => void }) {
-  const conValor = datos.posiciones.filter((p) => p.valor_centavos !== null);
-  const total = conValor.reduce((s, p) => s + (p.valor_centavos ?? 0), 0);
+function Portafolio({
+  datos,
+  actualizando,
+  alActualizar,
+  alGuardar,
+  alFallar,
+}: {
+  datos: Datos;
+  actualizando: boolean;
+  alActualizar: () => void;
+  alGuardar: (texto: string) => void;
+  alFallar: (texto: string) => void;
+}) {
   const porcentaje = datos.invertido_centavos ? (datos.no_realizado_centavos / datos.invertido_centavos) * 100 : 0;
 
   if (datos.posiciones.length === 0)
@@ -106,78 +132,315 @@ function Portafolio({ datos, actualizando, alActualizar }: { datos: Datos; actua
     );
 
   return (
-    <div className="paneles">
-      <Comprobante
-        titulo="Cartera"
-        tinte="menta"
-        className="panel"
-        pie={
-          <span className="pie-precios">
-            <span className="nota">
-              {datos.precios_al ? `Precios del ${new Date(datos.precios_al).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}` : "Todavía no se bajaron precios"}
+    <>
+      {datos.niveles_tocados.map((n) => (
+        <AvisoDeNivel key={n.activo} aviso={n} alGuardar={alGuardar} alFallar={alFallar} />
+      ))}
+      <div className="portafolio">
+        <Comprobante
+          titulo="Cartera"
+          tinte="menta"
+          className="cartera"
+          pie={
+            <span className="pie-precios">
+              <span className="nota">
+                {datos.precios_al ? `Precios del ${new Date(datos.precios_al).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}` : "Todavía no se bajaron precios"}
+              </span>
+              <button type="button" className="boton-texto" onClick={alActualizar} disabled={actualizando}>
+                <RefreshCw size={14} aria-hidden="true" className={actualizando ? "girando" : undefined} /> {actualizando ? "Actualizando…" : "Actualizar"}
+              </button>
             </span>
-            <button type="button" className="boton-texto" onClick={alActualizar} disabled={actualizando}>
-              <RefreshCw size={14} aria-hidden="true" className={actualizando ? "girando" : undefined} /> {actualizando ? "Actualizando…" : "Actualizar"}
-            </button>
-          </span>
-        }
-      >
-        <p className="monto-grande">
-          <span className="moneda">U$D</span>
-          <span>{importe(datos.cartera_centavos)}</span>
-        </p>
-        <p className={`chip-variacion ${datos.no_realizado_centavos >= 0 ? "tono-bien" : "tono-mal"}`}>
-          {signo(datos.no_realizado_centavos)}U$D {importe(datos.no_realizado_centavos)} sin realizar ·{" "}
-          {signo(datos.no_realizado_centavos)}
-          {Math.abs(porcentaje).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%
-        </p>
-        {total > 0 && (
-          <>
-            <div className="composicion" aria-hidden="true">
-              {conValor.map((p, i) => (
-                <span key={p.activo} style={{ width: `${((p.valor_centavos ?? 0) / total) * 100}%`, background: COLORES[i % COLORES.length] }} />
-              ))}
-            </div>
-            <p className="nota numeros">
-              {conValor.map((p) => `${p.activo} ${Math.round(((p.valor_centavos ?? 0) / total) * 100)}%`).join(" · ")}
-            </p>
-          </>
-        )}
-        <ul className="renglones">
-          <Renglon concepto="Invertido en lo que tenés" monto={plata(datos.invertido_centavos, "USD")} />
-        </ul>
-        {datos.sin_precio.length > 0 && <p className="nota tono-ojo">Sin precio: {datos.sin_precio.join(", ")}. Su valor no suma a la cartera.</p>}
-      </Comprobante>
+          }
+        >
+          <p className="monto-grande">
+            <span className="moneda">U$D</span>
+            <span>{importe(datos.cartera_centavos)}</span>
+          </p>
+          <p className={`chip-variacion ${datos.no_realizado_centavos >= 0 ? "tono-bien" : "tono-mal"}`}>
+            {signo(datos.no_realizado_centavos)}U$D {importe(datos.no_realizado_centavos)} sin realizar ·{" "}
+            {signo(datos.no_realizado_centavos)}
+            {Math.abs(porcentaje).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%
+          </p>
+          <ul className="renglones">
+            <Renglon concepto="Invertido en lo que tenés" monto={plata(datos.invertido_centavos, "USD")} />
+          </ul>
+          {datos.sin_precio.length > 0 && <p className="nota tono-ojo">Sin precio: {datos.sin_precio.join(", ")}. Su valor no suma a la cartera.</p>}
+        </Comprobante>
+        <Evolucion />
+        <Posiciones datos={datos} alGuardar={alGuardar} alFallar={alFallar} />
+      </div>
+    </>
+  );
+}
 
-      <Comprobante titulo="Posiciones" className="panel">
-        <ul className="lista">
-          {datos.posiciones.map((p) => {
-            const variacion = p.no_realizado_centavos !== null && p.invertido_centavos ? (p.no_realizado_centavos / p.invertido_centavos) * 100 : null;
-            return (
-              <li key={p.activo} className="item">
-                <span className="iniciales" aria-hidden="true">
-                  {p.activo.slice(0, 3)}
-                </span>
-                <div className="item-texto">
-                  <strong>{p.activo}</strong>
-                  <span className="numeros">
-                    {decimal(p.cantidad, 8)} · prom. U$D {decimal(p.costo_promedio)}
-                  </span>
-                </div>
-                <div className="item-derecha">
-                  <span className="item-monto">{p.valor_centavos === null ? "sin precio" : plata(p.valor_centavos, "USD")}</span>
-                  {variacion !== null && (
-                    <span className={`numeros ${variacion >= 0 ? "tono-bien" : "tono-mal"}`}>
-                      {signo(variacion)}
-                      {Math.abs(variacion).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%
-                    </span>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </Comprobante>
+const RANGOS = [
+  ["1m", "1M", 31],
+  ["3m", "3M", 92],
+  ["6m", "6M", 183],
+  ["todo", "Todo", 100000],
+] as const;
+type Rango = (typeof RANGOS)[number][0];
+
+/** La cartera día por día: lo que valía contra lo que se había puesto. */
+function Evolucion() {
+  const [historia, setHistoria] = useState<HistoriaInversiones | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [rango, setRango] = useState<Rango>("todo");
+  useEffect(() => {
+    traerHistoriaInversiones()
+      .then(setHistoria)
+      .catch((e: Error) => setError(e.message));
+  }, []);
+  const dias = RANGOS.find(([clave]) => clave === rango)?.[2] ?? 100000;
+  const puntos = (historia?.puntos ?? []).slice(-dias);
+
+  return (
+    <Comprobante titulo="Evolución" className="evolucion abierto">
+      {error ? (
+        <p className="nota">No se pudo armar la evolución: {error}</p>
+      ) : historia === null ? (
+        <p className="nota cargando-grafico">Armando la evolución con los precios de cada día…</p>
+      ) : puntos.length < 2 ? (
+        <p className="vacio">Hace falta más de un día con operaciones para ver la evolución.</p>
+      ) : (
+        <>
+          <div className="evolucion-arriba">
+            <Leyenda
+              forma="linea"
+              items={[
+                { nombre: "Lo que valía", color: "var(--violeta)" },
+                { nombre: "Lo invertido", color: "var(--suave)" },
+              ]}
+            />
+            <Segmentado etiqueta="Período" opciones={RANGOS.map(([clave, texto]) => [clave, texto] as const)} valor={rango} alCambiar={setRango} />
+          </div>
+          <GraficoLinea
+            etiqueta="Valor de la cartera y lo invertido, día por día"
+            fechas={puntos.map((p) => p.fecha)}
+            formato={enDolares}
+            series={[
+              { nombre: "lo invertido", color: "var(--suave)", valores: puntos.map((p) => p.invertido_centavos) },
+              { nombre: "lo que valía", color: "var(--violeta)", valores: puntos.map((p) => p.valor_centavos), area: true },
+            ]}
+          />
+          {historia.sin_precio.length > 0 && (
+            <p className="nota">Sin precios viejos de {historia.sin_precio.join(", ")}: no entran en la evolución.</p>
+          )}
+          <details className="tabla-datos">
+            <summary>Ver como tabla</summary>
+            <table>
+              <thead>
+                <tr>
+                  <th>Fin de mes</th>
+                  <th>Valía</th>
+                  <th>Invertido</th>
+                </tr>
+              </thead>
+              <tbody>
+                {porMes(puntos).map((p) => (
+                  <tr key={p.fecha}>
+                    <td>{diaYMes(p.fecha)}</td>
+                    <td>{enDolares(p.valor_centavos)}</td>
+                    <td>{enDolares(p.invertido_centavos)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
+        </>
+      )}
+    </Comprobante>
+  );
+}
+
+const VISIBLES = 5;
+
+/** La rueda con la composición y la lista; arriba de cinco, "Ver todas". */
+function Posiciones({ datos, alGuardar, alFallar }: { datos: Datos; alGuardar: (t: string) => void; alFallar: (t: string) => void }) {
+  const [todas, setTodas] = useState(false);
+  const [resaltada, setResaltada] = useState<string | null>(null);
+  const [abierta, setAbierta] = useState<string | null>(null);
+  const conValor = datos.posiciones.filter((p) => p.valor_centavos !== null);
+  const principales = conValor.slice(0, COLORES.length);
+  const color = new Map(principales.map((p, i) => [p.activo, COLORES[i]]));
+  const resto = conValor.slice(COLORES.length);
+  const partes = [
+    ...principales.map((p) => ({ nombre: p.activo, valor: p.valor_centavos ?? 0, color: color.get(p.activo) ?? "var(--apagado)" })),
+    ...(resto.length ? [{ nombre: "Otras", valor: resto.reduce((s, p) => s + (p.valor_centavos ?? 0), 0), color: "var(--apagado)" }] : []),
+  ];
+  const total = partes.reduce((s, p) => s + p.valor, 0);
+  const lista = todas ? datos.posiciones : datos.posiciones.slice(0, VISIBLES);
+
+  return (
+    <Comprobante titulo={<>Posiciones <span className="contador">{datos.posiciones.length}</span></>} className="posiciones">
+      <div className="posiciones-cuerpo">
+        {total > 0 && (
+          <div className="posiciones-rueda">
+            <Rueda
+              partes={partes}
+              resaltada={resaltada}
+              alResaltar={setResaltada}
+              centro={
+                resaltada ? (
+                  <>
+                    <strong>{resaltada}</strong>
+                    <span>{Math.round(((partes.find((p) => p.nombre === resaltada)?.valor ?? 0) / total) * 100)}%</span>
+                  </>
+                ) : (
+                  <>
+                    <strong>{conValor.length}</strong>
+                    <span>{conValor.length === 1 ? "activo" : "activos"}</span>
+                  </>
+                )
+              }
+            />
+            <Leyenda forma="caja" items={partes.map((p) => ({ nombre: `${p.nombre} ${Math.round((p.valor / total) * 100)}%`, color: p.color }))} />
+          </div>
+        )}
+        <div className="posiciones-lista">
+          <ul className="lista">
+            {lista.map((p) => (
+              <FilaPosicion
+                key={p.activo}
+                posicion={p}
+                color={color.get(p.activo) ?? "var(--apagado)"}
+                resaltada={resaltada === p.activo}
+                abierta={abierta === p.activo}
+                alTocar={() => setAbierta(abierta === p.activo ? null : p.activo)}
+                alResaltar={setResaltada}
+                alGuardar={(texto) => {
+                  setAbierta(null);
+                  alGuardar(texto);
+                }}
+                alFallar={alFallar}
+              />
+            ))}
+          </ul>
+          {datos.posiciones.length > VISIBLES && (
+            <button type="button" className="agregar" onClick={() => setTodas(!todas)}>
+              {todas ? "Ver menos" : `Ver todas (${datos.posiciones.length})`}
+            </button>
+          )}
+        </div>
+      </div>
+    </Comprobante>
+  );
+}
+
+function FilaPosicion({
+  posicion: p,
+  color,
+  resaltada,
+  abierta,
+  alTocar,
+  alResaltar,
+  alGuardar,
+  alFallar,
+}: {
+  posicion: Datos["posiciones"][number];
+  color: string;
+  resaltada: boolean;
+  abierta: boolean;
+  alTocar: () => void;
+  alResaltar: (activo: string | null) => void;
+  alGuardar: (t: string) => void;
+  alFallar: (t: string) => void;
+}) {
+  const [stopLoss, setStopLoss] = useState(p.stop_loss ?? "");
+  const [takeProfit, setTakeProfit] = useState(p.take_profit ?? "");
+  const variacion = p.no_realizado_centavos !== null && p.invertido_centavos ? (p.no_realizado_centavos / p.invertido_centavos) * 100 : null;
+  const niveles = [p.stop_loss && `SL ${decimal(p.stop_loss)}`, p.take_profit && `TP ${decimal(p.take_profit)}`].filter(Boolean);
+
+  async function guardar(evento: FormEvent, quitar = false) {
+    evento.preventDefault();
+    try {
+      await guardarNiveles(p.activo, quitar ? "" : stopLoss, quitar ? "" : takeProfit, p.moneda);
+      alGuardar(quitar ? `${p.activo}: sin stop loss ni take profit.` : `${p.activo}: niveles guardados. Se revisan cada vez que actualizás los precios.`);
+    } catch (error) {
+      alFallar((error as Error).message);
+    }
+  }
+
+  return (
+    <li className={`item posicion${resaltada ? " resaltada" : ""}${abierta ? " abierta" : ""}`} onPointerEnter={() => alResaltar(p.activo)} onPointerLeave={() => alResaltar(null)}>
+      <button type="button" className="posicion-fila" onClick={alTocar} aria-expanded={abierta}>
+        <span className="posicion-color" style={{ background: color }} aria-hidden="true" />
+        <span className="item-texto">
+          <strong>{p.activo}</strong>
+          <span className="numeros">
+            {decimal(p.cantidad, 8)} · prom. U$D {decimal(p.costo_promedio)}
+          </span>
+          {niveles.length > 0 && <span className="posicion-niveles numeros">{niveles.join(" · ")}{p.moneda !== "USD" && ` ${p.moneda}`}</span>}
+        </span>
+        <span className="item-derecha">
+          <span className="item-monto">{p.valor_centavos === null ? "sin precio" : plata(p.valor_centavos, "USD")}</span>
+          {variacion !== null && (
+            <span className={`numeros ${variacion >= 0 ? "tono-bien" : "tono-mal"}`}>
+              {signo(variacion)}
+              {Math.abs(variacion).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%
+            </span>
+          )}
+        </span>
+      </button>
+      {abierta && (
+        <form className="formulario niveles-editor" onSubmit={(e) => guardar(e)}>
+          <div className="dos-columnas">
+            <label>
+              Stop loss ({p.moneda})
+              <input inputMode="decimal" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)} placeholder="sin stop loss" />
+            </label>
+            <label>
+              Take profit ({p.moneda})
+              <input inputMode="decimal" value={takeProfit} onChange={(e) => setTakeProfit(e.target.value)} placeholder="sin take profit" />
+            </label>
+          </div>
+          <div className="acciones-plan">
+            <button className="principal chico">Guardar</button>
+            {niveles.length > 0 && (
+              <button type="button" className="boton-texto peligroso" onClick={(e) => guardar(e as unknown as FormEvent, true)}>
+                Quitar los dos
+              </button>
+            )}
+          </div>
+        </form>
+      )}
+    </li>
+  );
+}
+
+/** El precio llegó a un nivel: lo más probable es que la posición se haya cerrado. Se confirma con un toque. */
+function AvisoDeNivel({ aviso: n, alGuardar, alFallar }: { aviso: AvisoNivel; alGuardar: (t: string) => void; alFallar: (t: string) => void }) {
+  const [enviando, setEnviando] = useState(false);
+  const cual = n.tipo === "stop_loss" ? "stop loss" : "take profit";
+  async function hacer(accion: () => Promise<void>, texto: string) {
+    setEnviando(true);
+    try {
+      await accion();
+      alGuardar(texto);
+    } catch (error) {
+      alFallar((error as Error).message);
+    } finally {
+      setEnviando(false);
+    }
+  }
+  return (
+    <div className={`aviso-nivel tono-${n.tipo === "stop_loss" ? "mal" : "bien"}`} role="alert">
+      <p>
+        <strong>{n.activo}</strong> llegó a tu {cual} ({decimal(n.nivel)} {n.moneda}) el {diaYMes(n.fecha)}. ¿Se cerró la posición?
+      </p>
+      <div className="aviso-nivel-acciones">
+        <button
+          type="button"
+          className="principal chico"
+          disabled={enviando}
+          onClick={() => hacer(() => cerrarPorNivel(n.activo), `${n.activo}: venta de ${decimal(n.cantidad, 8)} a ${decimal(n.nivel)} cargada.`)}
+        >
+          Sí, cargar la venta de {decimal(n.cantidad, 8)}
+        </button>
+        <button type="button" className="secundario chico" disabled={enviando} onClick={() => hacer(() => descartarNivel(n.activo), "Listo, la posición sigue abierta.")}>
+          No se cerró
+        </button>
+      </div>
     </div>
   );
 }

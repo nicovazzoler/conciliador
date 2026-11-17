@@ -75,6 +75,19 @@ describe("aAtender", () => {
   });
 });
 
+describe("qué hacer con cada cosa", () => {
+  it("cada renglón lleva a donde se arregla, y los fijos pueden quedar afuera", () => {
+    const r = reporte({
+      fijos: [fijo("Internet", "sin debitar")],
+      dias_sobre_tope: [{ fecha: "2026-11-05", movimientos: 3, pesos_centavos: 30_000_000, detalle: "" }],
+    });
+    const conFijos = aAtender(r);
+    expect(conFijos.map((f) => f.enlace?.href)).toEqual(["#/plan", "#/movimientos/2026-11/dia:2026-11-05"]);
+    const sinFijos = aAtender(r, { fijos: false });
+    expect(sinFijos.map((f) => f.clave)).toEqual(["tope-2026-11-05"]);
+  });
+});
+
 describe("meses", () => {
   it("mueve el mes cruzando el cambio de año, para los dos lados", () => {
     expect(moverMes("2026-01", -1)).toBe("2025-12");

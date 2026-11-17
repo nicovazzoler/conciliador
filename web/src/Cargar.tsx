@@ -36,8 +36,8 @@ const MONEDAS = [
   ["USD", "Dólares"],
 ] as const;
 
-export function Cargar() {
-  const [tipo, setTipo] = useState<Tipo>("gasto");
+export function Cargar({ tipoInicial = "gasto" }: { tipoInicial?: Tipo }) {
+  const [tipo, setTipo] = useState<Tipo>(tipoInicial);
   const [manuales, setManuales] = useState<Manual[]>([]);
   const [categorias, setCategorias] = useState<string[]>([]);
   const [mensaje, setMensaje] = useState<Mensaje>(null);

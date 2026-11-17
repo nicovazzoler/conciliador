@@ -59,6 +59,19 @@ export async function traerReporte(mes: string, opciones?: RequestInit): Promise
   return leer<Reporte>(await fetch(`/api/reporte/${encodeURIComponent(mes)}`, opciones));
 }
 
+export type MesCategoria = Esquemas["MesCategoria"];
+export type MesFijo = Esquemas["MesFijo"];
+
+export async function traerHistorialCategoria(mes: string, nombre: string, meses = 6): Promise<MesCategoria[]> {
+  const consulta = new URLSearchParams({ nombre, meses: String(meses) });
+  return leer<MesCategoria[]>(await fetch(`/api/historial/${encodeURIComponent(mes)}/categoria?${consulta}`));
+}
+
+export async function traerHistorialFijo(mes: string, concepto: string, meses = 6): Promise<MesFijo[]> {
+  const consulta = new URLSearchParams({ concepto, meses: String(meses) });
+  return leer<MesFijo[]>(await fetch(`/api/historial/${encodeURIComponent(mes)}/fijo?${consulta}`));
+}
+
 export async function traerHistorial(mes: string, meses = 6, opciones?: RequestInit): Promise<MesHistorial[]> {
   return leer<MesHistorial[]>(await fetch(`/api/historial/${encodeURIComponent(mes)}?meses=${meses}`, opciones));
 }
@@ -173,6 +186,27 @@ export async function leerCapturas(archivos: File[]): Promise<LecturaCapturas> {
   const formulario = new FormData();
   for (const archivo of archivos) formulario.append("archivos", archivo);
   return leer<LecturaCapturas>(await fetch("/api/operaciones/leer", { method: "POST", body: formulario }));
+}
+
+export type HistoriaInversiones = Esquemas["HistoriaInversiones"];
+export type AvisoNivel = Esquemas["AvisoNivel"];
+
+export async function traerHistoriaInversiones(): Promise<HistoriaInversiones> {
+  return leer<HistoriaInversiones>(await fetch("/api/historia-inversiones"));
+}
+
+/** Vacíos los dos, se borran. */
+export async function guardarNiveles(activo: string, stop_loss: string, take_profit: string, moneda: string): Promise<void> {
+  return leer<void>(await enviar(`/api/niveles/${encodeURIComponent(activo)}`, "PUT", { stop_loss, take_profit, moneda }));
+}
+
+/** Confirma que la posición se cerró en el nivel: carga la venta. */
+export async function cerrarPorNivel(activo: string): Promise<void> {
+  await leer(await enviar(`/api/niveles/${encodeURIComponent(activo)}/cerrar`, "POST"));
+}
+
+export async function descartarNivel(activo: string): Promise<void> {
+  return leer<void>(await enviar(`/api/niveles/${encodeURIComponent(activo)}/descartar`, "POST"));
 }
 
 export async function borrarOperacion(id: number): Promise<void> {

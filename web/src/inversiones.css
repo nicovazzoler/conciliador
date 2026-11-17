@@ -201,3 +201,163 @@
   gap: 0.6rem;
   margin-top: 1rem;
 }
+
+/* Portafolio: la cartera y la evolución arriba; las posiciones con su rueda abajo. */
+
+.portafolio {
+  display: grid;
+  gap: 1rem;
+}
+
+.portafolio > * {
+  min-width: 0;
+}
+
+.evolucion-arriba {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.evolucion-arriba .segmentado {
+  width: auto;
+  min-width: 14rem;
+}
+
+.cargando-grafico {
+  min-height: 220px;
+  animation: latido 1.4s ease-in-out infinite;
+}
+
+.posiciones-cuerpo {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.posiciones-rueda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem 1.5rem;
+}
+
+.posiciones-rueda .grafico-leyenda {
+  display: grid;
+  gap: 0.4rem;
+  font-family: var(--numeros);
+}
+
+.item.posicion {
+  display: block;
+  padding: 0;
+  transition: background 0.15s ease;
+}
+
+.item.posicion.resaltada {
+  background: rgb(255 255 255 / 0.03);
+}
+
+.posicion-fila {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 0.25rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.posicion-color {
+  flex: none;
+  width: 4px;
+  align-self: stretch;
+  border-radius: 4px;
+}
+
+.posicion-niveles {
+  color: var(--suave);
+}
+
+.formulario.niveles-editor {
+  margin: 0 0 0.9rem 1rem;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.niveles-editor input[inputmode="decimal"] {
+  font: 500 1rem var(--numeros);
+  letter-spacing: 0;
+}
+
+/* Aviso de stop loss o take profit tocado: lo primero que se ve. */
+
+.aviso-nivel {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.15rem;
+  border-radius: var(--radio);
+  border: 1px solid var(--borde);
+  background: var(--superficie);
+}
+
+.aviso-nivel.tono-mal {
+  border-color: rgb(226 98 94 / 0.45);
+  background: linear-gradient(180deg, var(--rojo-fondo), var(--superficie));
+}
+
+.aviso-nivel.tono-bien {
+  border-color: rgb(76 216 134 / 0.4);
+  background: linear-gradient(180deg, var(--menta-fondo), var(--superficie));
+}
+
+.aviso-nivel p {
+  margin: 0;
+}
+
+.aviso-nivel-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+@media (min-width: 860px) {
+  .portafolio {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.6fr);
+    align-items: start;
+  }
+
+  .portafolio .posiciones {
+    grid-column: 1 / -1;
+  }
+
+  .comprobante.evolucion.abierto {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .posiciones-cuerpo {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 2rem;
+  }
+
+  .posiciones-rueda {
+    flex-direction: column;
+    position: sticky;
+    top: 1rem;
+  }
+}
+
+.aviso-nivel p {
+  color: var(--texto);
+}

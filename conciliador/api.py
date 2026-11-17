@@ -1,10 +1,11 @@
 """API HTTP. Solo traduce: cada endpoint llama a las mismas funciones que la terminal."""
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
 import re
 import shutil
 import tempfile
 from dataclasses import asdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 from pathlib import Path
@@ -50,6 +51,20 @@ def crear_app(
         try:
             return asdict(reporte.armar(motor, mes))
         except ValueError as error:  # Un mes mal escrito es un error de quien llama.
+            raise HTTPException(status_code=422, detail=str(error))
+
+    @app.get("/api/historial/{mes}/categoria", response_model=list[esquemas.MesCategoria])
+    def ver_historial_categoria(mes: str, nombre: str, meses: int = 6):
+        try:
+            return reporte.historial_categoria(motor, nombre, mes, meses)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+
+    @app.get("/api/historial/{mes}/fijo", response_model=list[esquemas.MesFijo])
+    def ver_historial_fijo(mes: str, concepto: str, meses: int = 6):
+        try:
+            return reporte.historial_fijo(motor, concepto, mes, meses)
+        except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error))
 
     @app.get("/api/historial/{mes}", response_model=list[esquemas.MesHistorial])
@@ -243,7 +258,106 @@ def crear_app(
         nuevos, errores = precios.actualizar(tipos, traer_precio)
         origen = {a: ("binance" if tipos[a] == "cripto" else "yahoo") for a in nuevos}
         base.guardar_precios(motor, nuevos, origen, datetime.now())
+        errores += revisar_niveles(tipos)
         return {"actualizados": len(nuevos), "errores": errores}
+
+    def revisar_niveles(tipos: dict[str, str]) -> list[str]:
+        """Si hoy el precio llegó al stop loss o al take profit de una posición abierta, queda avisado."""
+        errores = []
+        for activo, nivel in base.niveles(motor).items():
+            if activo not in tipos or nivel["tocado"]:
+                continue
+            try:
+                bajo, alto, moneda = precios.extremos(activo, tipos[activo], traer_precio)
+            except precios.FALLAS as error:
+                errores.append(f"{activo}: no se pudo revisar el stop loss ({type(error).__name__})")
+                continue
+            if moneda != nivel["moneda"]:
+                errores.append(f"{activo}: cotiza en {moneda} y el stop loss está en {nivel['moneda']}")
+            elif nivel["stop_loss"] is not None and bajo <= nivel["stop_loss"]:
+                base.marcar_tocado(motor, activo, "stop_loss", date.today())
+            elif nivel["take_profit"] is not None and alto >= nivel["take_profit"]:
+                base.marcar_tocado(motor, activo, "take_profit", date.today())
+        return errores
+
+    @app.put("/api/niveles/{activo}", status_code=204)
+    def guardar_niveles(activo: str, entrada: esquemas.NivelesEntrada):
+        activo = activo.strip().upper()
+        try:
+            leidos = [
+                None if not (texto or "").strip() else inversiones.decimal_desde(texto, nombre)
+                for texto, nombre in ((entrada.stop_loss, "stop loss"), (entrada.take_profit, "take profit"))
+            ]
+            moneda = entrada.moneda.strip().upper()
+            if not re.fullmatch(r"[A-Z]{3}", moneda):
+                raise ValueError("la moneda va con su código de tres letras")
+            if all(leidos) and leidos[0] >= leidos[1]:
+                raise ValueError("el stop loss tiene que estar debajo del take profit")
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error))
+        base.guardar_niveles(motor, activo, moneda, *leidos)
+        return Response(status_code=204)
+
+    @app.post("/api/niveles/{activo}/cerrar", status_code=201, response_model=esquemas.Guardado)
+    def cerrar_por_nivel(activo: str):
+        """Confirma que la posición se cerró en el nivel: carga la venta de todo lo que había, a ese precio."""
+        nivel = base.niveles(motor).get(activo)
+        abierta = next((p for p in inversiones.calcular(base.operaciones(motor), {}).posiciones if p.activo == activo), None)
+        if nivel is None or not nivel["tocado"] or abierta is None:
+            raise HTTPException(status_code=404, detail=f"no hay un stop loss o take profit tocado en {activo}")
+        precio, dia = nivel[nivel["tocado"]], nivel["tocado_el"]
+        try:
+            tipo_cambio = precios.cambio(nivel["moneda"], dia, traer_precio)
+        except precios.FALLAS:
+            raise HTTPException(status_code=502, detail=f"no se pudo saber cuánto valía el {nivel['moneda']} ese día")
+        venta = inversiones.Operacion(0, datetime.combine(dia, datetime.min.time()), activo, abierta.tipo_activo, "venta",
+                                      abierta.cantidad, precio, Decimal(0), moneda=nivel["moneda"])
+        base.guardar_operacion(motor, "manual", uuid4().hex, venta, tipo_cambio)
+        base.borrar_niveles(motor, activo)
+        return {"id": max(o.id for o in base.operaciones(motor))}
+
+    @app.post("/api/niveles/{activo}/descartar", status_code=204)
+    def descartar_nivel(activo: str):
+        """No se cerró: se borra el aviso y los niveles quedan como estaban."""
+        base.marcar_tocado(motor, activo, None, None)
+        return Response(status_code=204)
+
+    historia_guardada: dict = {}
+
+    @app.get("/api/historia-inversiones", response_model=esquemas.HistoriaInversiones)
+    def ver_historia():
+        """La cartera día por día, del último año como mucho. Los precios viejos se piden una vez por día."""
+        ops = base.operaciones(motor)
+        if not ops:
+            return {"puntos": [], "sin_precio": []}
+        hoy = date.today()
+        desde = max(min(o.fecha_hora.date() for o in ops), hoy - timedelta(days=365))
+        tipos = {o.activo: o.tipo_activo for o in ops}
+        def bajar(activo: str):
+            try:
+                return precios.cierres(activo, tipos[activo], desde, traer_precio)
+            except precios.FALLAS:
+                return None
+
+        faltan = [a for a in sorted(tipos) if (a, desde, hoy) not in historia_guardada]
+        with ThreadPoolExecutor(max_workers=6) as hilos:  # Un pedido por activo, todos a la vez.
+            for activo, serie in zip(faltan, hilos.map(bajar, faltan)):
+                historia_guardada[(activo, desde, hoy)] = serie
+        series, sin_precio = {}, []
+        for activo in sorted(tipos):
+            clave = (activo, desde, hoy)
+            if historia_guardada[clave]:
+                series[activo] = historia_guardada[clave]
+            else:
+                sin_precio.append(activo)
+        c = inversiones.a_centavos
+        return {
+            "puntos": [
+                {"fecha": p["fecha"], "valor_centavos": c(p["valor"]), "invertido_centavos": c(p["invertido"])}
+                for p in inversiones.historia(ops, series, desde, hoy)
+            ],
+            "sin_precio": sin_precio,
+        }
 
     @app.get("/api/movimientos/{mes}", response_model=esquemas.MovimientosDelMes)
     def ver_movimientos(mes: str):
@@ -358,6 +472,9 @@ def armar_inversiones(motor: base.Engine, mes: str) -> dict:
     resultado = inversiones.calcular(ops, guardados)
     c = inversiones.a_centavos
     abiertas = {p.activo for p in resultado.posiciones}
+    niveles = base.niveles(motor)
+    moneda_de = {o.activo: o.moneda for o in sorted(ops, key=lambda o: (o.fecha_hora, o.id))}
+    cantidad_de = {p.activo: p.cantidad for p in resultado.posiciones}
     del_mes = sorted(inversiones.por_mes(ops).get(mes, []), key=lambda o: (o.fecha_hora, o.id), reverse=True)
     con_precio = [p for p in resultado.posiciones if p.valor is not None]
     return {
@@ -371,6 +488,14 @@ def armar_inversiones(motor: base.Engine, mes: str) -> dict:
         "sin_precio": [p.activo for p in resultado.posiciones if p.precio is None],
         "precios_al": precios_al,
         "avisos": resultado.avisos,
+        "niveles_tocados": [
+            {
+                "activo": activo, "tipo": n["tocado"], "nivel": inversiones.formato(n[n["tocado"]]), "moneda": n["moneda"],
+                "fecha": n["tocado_el"], "cantidad": inversiones.formato(cantidad_de[activo]),
+            }
+            for activo, n in sorted(niveles.items())
+            if n["tocado"] and activo in abiertas
+        ],
         "posiciones": [
             {
                 "activo": p.activo, "tipo_activo": p.tipo_activo, "cantidad": inversiones.formato(p.cantidad),
@@ -378,6 +503,9 @@ def armar_inversiones(motor: base.Engine, mes: str) -> dict:
                 "invertido_centavos": c(p.costo),
                 "precio": None if p.precio is None else inversiones.formato(p.precio),
                 "valor_centavos": c(p.valor), "no_realizado_centavos": c(p.no_realizado),
+                "moneda": niveles.get(p.activo, {}).get("moneda") or moneda_de.get(p.activo, "USD"),
+                "stop_loss": texto_nivel(niveles.get(p.activo, {}).get("stop_loss")),
+                "take_profit": texto_nivel(niveles.get(p.activo, {}).get("take_profit")),
             }
             for p in resultado.posiciones
         ],
@@ -393,6 +521,10 @@ def armar_inversiones(motor: base.Engine, mes: str) -> dict:
             for o in del_mes
         ],
     }
+
+
+def texto_nivel(valor: Decimal | None) -> str | None:
+    return None if valor is None else inversiones.formato(valor)
 
 
 def nombre_seguro(nombre: str | None) -> str | None:

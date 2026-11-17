@@ -56,14 +56,71 @@ def a_dolares(precio: Decimal, moneda: str, traer: Callable[[str], dict]) -> Dec
     return precio * cambio
 
 
+FALLAS = (OSError, ValueError, KeyError, IndexError, TypeError)
+
+
+def _grafico(activo: str, consulta: str, traer: Callable[[str], dict]) -> dict:
+    """El gráfico de Yahoo del activo; si no existe tal cual, el del símbolo que encuentra la búsqueda."""
+    try:
+        return traer(f"{YAHOO}/v8/finance/chart/{urllib.parse.quote(activo)}?{consulta}")["chart"]["result"][0]
+    except FALLAS:
+        simbolo = _buscar(activo, traer)
+        return traer(f"{YAHOO}/v8/finance/chart/{urllib.parse.quote(simbolo)}?{consulta}")["chart"]["result"][0]
+
+
 def accion(activo: str, traer: Callable[[str], dict] = _json) -> Decimal:
     """El precio en USD. Si cotiza en otra moneda, se convierte con el cambio de hoy."""
+    meta = _grafico(activo.upper(), "range=1d&interval=1d", traer)["meta"]
+    return a_dolares(Decimal(str(meta["regularMarketPrice"])), meta["currency"], traer)
+
+
+def extremos(activo: str, tipo: str, traer: Callable[[str], dict] = _json) -> tuple[Decimal, Decimal, str]:
+    """El mínimo y el máximo de hoy, en la moneda en que cotiza: para saber si tocó un stop loss o un take profit."""
     activo = activo.upper()
-    try:
-        precio, moneda = _cotizacion(activo, traer)
-    except (OSError, ValueError, KeyError, IndexError, TypeError):
-        precio, moneda = _cotizacion(_buscar(activo, traer), traer)
-    return a_dolares(precio, moneda, traer)
+    if tipo == "cripto":
+        datos = traer(f"https://api.binance.com/api/v3/ticker/24hr?symbol={activo}USDT")
+        return Decimal(datos["lowPrice"]), Decimal(datos["highPrice"]), "USD"
+    meta = _grafico(activo, "range=1d&interval=1d", traer)["meta"]
+    bajo, alto, moneda = Decimal(str(meta["regularMarketDayLow"])), Decimal(str(meta["regularMarketDayHigh"])), meta["currency"]
+    if moneda == "GBp":
+        bajo, alto, moneda = bajo / 100, alto / 100, "GBP"
+    return bajo, alto, moneda
+
+
+def _segundos(dia: date) -> int:
+    return int(datetime.combine(dia, datetime.min.time(), timezone.utc).timestamp())
+
+
+def _serie(resultado: dict) -> dict[date, Decimal]:
+    fechas = [datetime.fromtimestamp(t, timezone.utc).date() for t in resultado.get("timestamp", [])]
+    cierres = resultado["indicators"]["quote"][0]["close"]
+    return {f: Decimal(str(c)) for f, c in zip(fechas, cierres) if c is not None}
+
+
+def cierres(activo: str, tipo: str, desde: date, traer: Callable[[str], dict] = _json) -> dict[date, Decimal]:
+    """El cierre de cada día desde `desde`, en USD. Lo que cotiza en otra moneda se convierte día por día."""
+    activo = activo.upper()
+    if tipo == "cripto":
+        if activo in ("USDT", "USDC", "USD"):
+            return {desde: Decimal(1)}
+        velas = traer(f"https://api.binance.com/api/v3/klines?symbol={activo}USDT&interval=1d"
+                      f"&startTime={_segundos(desde) * 1000}&limit=1000")
+        return {datetime.fromtimestamp(v[0] / 1000, timezone.utc).date(): Decimal(str(v[4])) for v in velas}
+    consulta = f"period1={_segundos(desde)}&period2={_segundos(date.today() + timedelta(days=1))}&interval=1d"
+    resultado = _grafico(activo, consulta, traer)
+    serie, moneda = _serie(resultado), resultado["meta"]["currency"]
+    if moneda == "GBp":
+        serie, moneda = {f: c / 100 for f, c in serie.items()}, "GBP"
+    if moneda == "USD":
+        return serie
+    cambio = _serie(traer(f"{YAHOO}/v8/finance/chart/{moneda}USD=X?{consulta}")["chart"]["result"][0])
+    return {f: c * v for f, c in serie.items() if (v := ultimo(cambio, f)) is not None}
+
+
+def ultimo(serie: dict[date, Decimal], dia: date) -> Decimal | None:
+    """El valor de ese día o el último anterior: un fin de semana usa el viernes."""
+    anteriores = [f for f in serie if f <= dia]
+    return serie[max(anteriores)] if anteriores else None
 
 
 def cambio(moneda: str, dia: date, traer: Callable[[str], dict] = _json) -> Decimal:

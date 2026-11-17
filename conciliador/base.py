@@ -337,6 +337,19 @@ class OperacionInversion(Base):
     tipo_cambio: Mapped[str] = mapped_column(String(40), server_default="1")  # USD por unidad de moneda, ese día.
 
 
+class NivelActivo(Base):
+    """Stop loss y take profit de una posición, en la moneda en que se opera. "Tocado" es que el precio llegó."""
+
+    __tablename__ = "niveles"
+
+    activo: Mapped[str] = mapped_column(String(20), primary_key=True)
+    moneda: Mapped[str] = mapped_column(String(3), server_default="USD")
+    stop_loss: Mapped[str | None] = mapped_column(String(40))
+    take_profit: Mapped[str | None] = mapped_column(String(40))
+    tocado: Mapped[str | None] = mapped_column(String(12))  # "stop_loss" o "take_profit".
+    tocado_el: Mapped[date | None] = mapped_column(Date)
+
+
 class PrecioActivo(Base):
     """El último precio conocido de cada activo, en USD, con su hora y su origen."""
 
@@ -852,3 +865,45 @@ def editar_regla(motor: Engine, regla_id: int, texto: str | None, categoria: str
             regla.categoria = categoria or regla.categoria
     aplicar_reglas(motor)
     return True
+
+
+# Stop loss y take profit.
+
+
+def niveles(motor: Engine) -> dict[str, dict]:
+    with Session(motor) as sesion:
+        return {
+            n.activo: {
+                "moneda": n.moneda,
+                "stop_loss": None if n.stop_loss is None else Decimal(n.stop_loss),
+                "take_profit": None if n.take_profit is None else Decimal(n.take_profit),
+                "tocado": n.tocado,
+                "tocado_el": n.tocado_el,
+            }
+            for n in sesion.scalars(select(NivelActivo))
+        }
+
+
+def guardar_niveles(motor: Engine, activo: str, moneda: str, stop_loss: Decimal | None, take_profit: Decimal | None) -> None:
+    """Sin ninguno de los dos, se borran. Cambiarlos borra un aviso de "tocado" anterior."""
+    with Session(motor) as sesion, sesion.begin():
+        if stop_loss is None and take_profit is None:
+            sesion.execute(delete(NivelActivo).where(NivelActivo.activo == activo))
+            return
+        sesion.merge(NivelActivo(
+            activo=activo, moneda=moneda,
+            stop_loss=None if stop_loss is None else str(stop_loss),
+            take_profit=None if take_profit is None else str(take_profit),
+            tocado=None, tocado_el=None,
+        ))
+
+
+def marcar_tocado(motor: Engine, activo: str, tipo: str | None, dia: date | None) -> None:
+    """Con tipo, el precio llegó a ese nivel ese día. Sin tipo, se descarta el aviso."""
+    with Session(motor) as sesion, sesion.begin():
+        sesion.execute(update(NivelActivo).where(NivelActivo.activo == activo).values(tocado=tipo, tocado_el=dia))
+
+
+def borrar_niveles(motor: Engine, activo: str) -> None:
+    with Session(motor) as sesion, sesion.begin():
+        sesion.execute(delete(NivelActivo).where(NivelActivo.activo == activo))
