@@ -97,6 +97,9 @@ function Contenido({
 }) {
   const { totales, importado } = reporte;
   const anterior = historial.at(-2);
+  const vencido = (historial.at(-1)?.fuentes ?? [])
+    .filter((f) => f.fuente.startsWith("tarjeta_"))
+    .reduce((suma, f) => suma + f.pesos_centavos, 0);
   const variacion =
     anterior && anterior.pesos_centavos > 0
       ? Math.round(((totales.pesos_centavos - anterior.pesos_centavos) / anterior.pesos_centavos) * 100)
@@ -135,6 +138,7 @@ function Contenido({
             <span>{importe(totales.pesos_centavos)}</span>
           </p>
           <ul className="renglones">
+            {vencido > 0 && <Renglon concepto="A mes vencido" monto={plata(vencido)} />}
             <Renglon concepto="Pagado en dólares" monto={plata(totales.dolares_centavos, "USD")} />
             <Renglon
               concepto="Todo pasado a dólares"
@@ -209,7 +213,10 @@ function MesAMes({ historial, mes, alElegir }: { historial: MesHistorial[]; mes:
       ) : (
         <p className="vacio">{moneda === "usd" ? "Sin gastos con cotización del dólar en estos meses." : "Sin gastos en estos meses."}</p>
       )}
-      <p className="nota">Tocá un mes para verlo. Una compra con tarjeta en un pago cuenta en el mes en que la hiciste; una en cuotas, en el mes en que vence cada cuota.</p>
+      <p className="nota">
+        Tocá un mes para verlo. Las tarjetas van a mes vencido: cuentan en el mes en que vence el resumen. Mercado Pago y lo
+        cargado a mano, en el mes en que salió la plata.
+      </p>
     </Comprobante>
   );
 }

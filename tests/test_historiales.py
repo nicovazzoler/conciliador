@@ -16,10 +16,11 @@ def cliente(tmp_path):
 
 
 def test_el_historial_parte_lo_gastado_por_fuente(tmp_path):
-    octubre = cliente(tmp_path).get("/api/historial/2026-10?meses=3").json()[-1]
-    fuentes = {f["fuente"]: f["pesos_centavos"] for f in octubre["fuentes"]}
-    assert {"mercado_pago", "tarjeta_comafi"} <= set(fuentes)
-    assert sum(fuentes.values()) == octubre["pesos_centavos"]
+    octubre, noviembre = cliente(tmp_path).get("/api/historial/2026-11?meses=3").json()[-2:]
+    assert {f["fuente"] for f in octubre["fuentes"]} == {"mercado_pago"}
+    fuentes = {f["fuente"]: f["pesos_centavos"] for f in noviembre["fuentes"]}
+    assert {"tarjeta_comafi", "tarjeta_nacion"} <= set(fuentes)  # Los resúmenes vencen en noviembre: mes vencido.
+    assert sum(fuentes.values()) == noviembre["pesos_centavos"]
 
 
 def test_historial_de_una_categoria(tmp_path):
@@ -36,3 +37,17 @@ def test_historial_de_un_fijo(tmp_path):
     assert [m["mes"] for m in meses] == ["2026-09", "2026-10"]
     assert meses[0]["estado"] == "sin datos"  # Sin el Mercado Pago de septiembre no se sabe.
     assert meses[-1]["estado"] in ("bien", "más caro", "más barato") and meses[-1]["pagos"] == 1
+
+
+def test_reimportar_un_resumen_lo_pasa_a_mes_vencido(tmp_path):
+    """Las bases de antes guardaban la compra en un pago en el mes de la compra. Reimportar lo corrige."""
+    from sqlalchemy import text
+
+    motor = base.conectar(tmp_path / "p.db")
+    importar_carpeta(DEMO, motor)
+    with motor.begin() as conexion:
+        conexion.execute(text("UPDATE movimientos SET mes = '2026-10' WHERE fuente = 'tarjeta_comafi' AND cuota IS NULL"))
+    importar_carpeta(DEMO, motor)
+    with motor.connect() as conexion:
+        meses = {fila[0] for fila in conexion.execute(text("SELECT mes FROM movimientos WHERE fuente = 'tarjeta_comafi' AND tipo != 'pago'"))}
+    assert meses == {"2026-11"}

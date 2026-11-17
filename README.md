@@ -66,7 +66,7 @@ CONCILIADOR_DB=demo.db .venv/bin/python -m conciliador importar demo
 CONCILIADOR_DB=demo.db .venv/bin/python -m conciliador web
 ```
 
-Y abrir <http://127.0.0.1:8000>. Los datos de la demo son de octubre de 2026: en Gastos, la flecha de la izquierda lleva a ese mes.
+Y abrir <http://127.0.0.1:8000>. Los datos de la demo son de octubre y noviembre de 2026: las tarjetas van a mes vencido, así que sus compras de octubre se ven en noviembre.
 
 Para leer capturas de inversiones hace falta una clave de Anthropic en `.env`:
 

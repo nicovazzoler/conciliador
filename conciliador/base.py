@@ -206,8 +206,16 @@ def guardar_movimientos(motor: Engine, fuente: str, filas: Iterable[FilaLeida]) 
             )
             if sesion.execute(orden).rowcount:
                 nuevas += 1
-            else:
-                repetidas += 1
+                continue
+            repetidas += 1
+            if fuente.startswith("tarjeta_"):
+                # Reimportar un resumen corrige el mes: así se pasaron las tarjetas a mes vencido.
+                sesion.execute(
+                    update(Movimiento)
+                    .where(Movimiento.fuente == fuente, Movimiento.numero_operacion == fila.numero_operacion,
+                           Movimiento.mes != (fila.mes or fila.fecha.strftime("%Y-%m")))
+                    .values(mes=fila.mes or fila.fecha.strftime("%Y-%m"))
+                )
     return nuevas, repetidas
 
 

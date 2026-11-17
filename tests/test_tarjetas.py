@@ -45,7 +45,7 @@ def test_cuotas_e_impuestos_cuentan_en_el_mes_de_vencimiento():
     cuota = filas["ZAPATERIA DEMO"]
     assert (cuota.tipo, cuota.cuota, cuota.fecha) == ("cuota", "03/06", date(2026, 8, 10))
     assert cuota.mes == "2026-11"
-    assert filas["SUPER DEMO 99"].mes == "2026-10"
+    assert filas["SUPER DEMO 99"].mes == "2026-11"  # A mes vencido: el resumen vence en noviembre.
     assert filas["IMPUESTO DE SELLOS $"].mes == "2026-11"
     assert filas["SU PAGO EN PESOS"].mes == "2026-10"
 
