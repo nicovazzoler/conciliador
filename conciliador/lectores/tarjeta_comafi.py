@@ -124,7 +124,7 @@ def _leer_consumo(texto: str, en_dolares: bool, resumen: ResumenTarjeta) -> None
             monto_centavos=monto,
             moneda="USD" if en_dolares else "ARS",
             tipo=tipo_de_consumo(monto, cuota is not None),
-            mes=mes_de(resumen.vencimiento) if cuota else mes_de(fecha),
+            mes=mes_de(resumen.vencimiento),  # A mes vencido: cuenta en el mes en que se paga el resumen.
             cuota=cuota,
             fecha_cotizacion=resumen.vencimiento if cuota else None,
         )

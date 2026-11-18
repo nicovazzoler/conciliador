@@ -217,6 +217,7 @@ function FilaMovimiento({
     nombreFuente(m.fuente, m.medio),
     esGasto ? m.categoria : TIPOS[m.tipo] ?? m.tipo,
     m.cuota ? `cuota ${m.cuota}` : null,
+    esGasto && m.fuente.startsWith("tarjeta_") ? "mes vencido" : null,
     m.categoria_manual ? "a mano" : null,
   ].filter(Boolean);
 

@@ -1,5 +1,6 @@
 -- Días del mes en que los gastos variables superaron el tope, en pesos.
 -- Variables: consumos que no son de un fijo ni de una cuota, incluido lo cargado a mano.
+-- Va por el día de la compra: lo de tarjeta cuenta en el mes en que la hiciste, aunque se pague a mes vencido.
 -- Parámetros: :mes y :tope en centavos (20000000 = $200.000).
 -- Desde sqlite3: .param set :mes "'2026-10'"  .param set :tope 20000000  y .read conciliador/consultas/tope.sql
 SELECT
@@ -11,7 +12,7 @@ SELECT
 FROM movimientos
 WHERE tipo = 'consumo'
   AND plan_concepto IS NULL
-  AND mes = :mes
+  AND strftime('%Y-%m', fecha) = :mes
 GROUP BY fecha
 HAVING pesos_centavos > :tope
 ORDER BY fecha;
