@@ -6,16 +6,25 @@ API con su token, desde la máquina del usuario. Acá no hay token de Mercado Pa
 import hashlib
 import hmac
 import json
+import logging
 import os
 from collections import deque
 from datetime import datetime, timezone
 
+import uvicorn
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 
-app = FastAPI(title="timbre", docs_url=None, redoc_url=None)
+app = FastAPI(title="timbre", docs_url=None, redoc_url=None, openapi_url=None)
+# El logger de uvicorn sale sin buffer en los logs de Railway; un print a stdout puede quedar retenido.
+log = logging.getLogger("uvicorn.error")
 
 # En memoria: se pierde al reiniciar. Alcanza para probar; los logs de Railway quedan igual.
 avisos: deque[dict] = deque(maxlen=200)
+
+
+def iguales(a: str, b: str) -> bool:
+    """Comparación en tiempo constante. En bytes, porque con str no-ASCII compare_digest tira TypeError."""
+    return hmac.compare_digest(a.encode(), b.encode())
 
 
 def firma_valida(secreto: str, x_signature: str, request_id: str, data_id: str) -> bool:
@@ -28,8 +37,7 @@ def firma_valida(secreto: str, x_signature: str, request_id: str, data_id: str) 
     manifiesto = "".join(
         f"{clave}:{valor};" for clave, valor in (("id", data_id), ("request-id", request_id), ("ts", ts)) if valor
     )
-    esperado = hmac.new(secreto.encode(), manifiesto.encode(), hashlib.sha256).hexdigest()
-    return hmac.compare_digest(esperado, v1)
+    return iguales(hmac.new(secreto.encode(), manifiesto.encode(), hashlib.sha256).hexdigest(), v1)
 
 
 @app.get("/")
@@ -45,16 +53,19 @@ async def recibir(
 ) -> Response:
     secreto = os.environ.get("MP_WEBHOOK_SECRET", "")
     if not secreto:
-        print("AVISO rechazado: falta MP_WEBHOOK_SECRET")
+        log.warning("AVISO rechazado: falta MP_WEBHOOK_SECRET")
         raise HTTPException(503, "falta configurar MP_WEBHOOK_SECRET")
     try:
         cuerpo = json.loads(await request.body() or b"{}")
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, UnicodeDecodeError):
         raise HTTPException(400, "el cuerpo no es JSON")
+    if not isinstance(cuerpo, dict):
+        raise HTTPException(400, "el cuerpo no es un objeto JSON")
+    data = cuerpo.get("data") if isinstance(cuerpo.get("data"), dict) else {}
     # Mercado Pago manda data.id en la URL y en el cuerpo; la firma usa el de la URL, en minúsculas.
-    data_id = str(request.query_params.get("data.id") or (cuerpo.get("data") or {}).get("id") or "").lower()
+    data_id = str(request.query_params.get("data.id") or data.get("id") or "").lower()
     if not firma_valida(secreto, x_signature, x_request_id, data_id):
-        print(f"AVISO rechazado: firma inválida (data.id={data_id or '-'})")
+        log.warning("AVISO rechazado: firma inválida (data.id=%s)", data_id or "-")
         raise HTTPException(401, "firma inválida")
 
     aviso = {
@@ -66,7 +77,7 @@ async def recibir(
         "request_id": x_request_id,  # Si se repite, es un reintento del mismo aviso.
     }
     avisos.append(aviso)
-    print(f"AVISO {aviso['tipo']} {aviso['accion']} id={aviso['id']} real={aviso['real']}")
+    log.info("AVISO %s %s id=%s real=%s", aviso["tipo"], aviso["accion"], aviso["id"], aviso["real"])
     return Response(status_code=200)
 
 
@@ -74,6 +85,11 @@ async def recibir(
 def listar(authorization: str = Header(default="")) -> list[dict]:
     """Los últimos avisos, del más nuevo al más viejo. Pide la clave de TIMBRE_CLAVE como Bearer."""
     clave = os.environ.get("TIMBRE_CLAVE", "")
-    if not clave or not hmac.compare_digest(authorization, f"Bearer {clave}"):
+    if not clave or not iguales(authorization, f"Bearer {clave}"):
         raise HTTPException(401, "clave incorrecta")
     return list(reversed(avisos))
+
+
+if __name__ == "__main__":
+    # Railway pasa el puerto en PORT y hay que escuchar en todas las interfaces, no solo en localhost.
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8000")))

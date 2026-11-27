@@ -4,7 +4,7 @@ import hmac
 import pytest
 from fastapi.testclient import TestClient
 
-import app as timbre
+import main as timbre
 
 SECRETO = "secreto-de-prueba"
 
@@ -66,3 +66,17 @@ def test_los_avisos_piden_clave(cliente):
 def test_sin_secreto_configurado_no_acepta_nada(cliente, monkeypatch):
     monkeypatch.delenv("MP_WEBHOOK_SECRET")
     assert avisar(cliente).status_code == 503
+
+
+def test_cuerpos_raros_no_rompen_el_servidor(cliente):
+    """Un 400 o 401, nunca un 500: la URL es pública y cualquiera puede mandar cualquier cosa."""
+    assert cliente.post("/webhook", content=b"[1, 2]").status_code == 400
+    assert cliente.post("/webhook", content=b"\xff\xfe").status_code == 400
+    assert cliente.post("/webhook", json={"data": "texto"}).status_code == 401
+    assert cliente.post("/webhook", json={}, headers={"x-signature": "ts=1,v1=ñ".encode("latin-1")}).status_code == 401
+    assert cliente.get("/avisos", headers={"Authorization": "Bearer ñ".encode("latin-1")}).status_code == 401
+
+
+def test_no_publica_la_documentacion(cliente):
+    assert cliente.get("/docs").status_code == 404
+    assert cliente.get("/openapi.json").status_code == 404
