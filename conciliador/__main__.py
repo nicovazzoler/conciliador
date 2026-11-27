@@ -1,4 +1,4 @@
-"""Comandos: python -m conciliador importar [carpeta] | revisar | migrar | gasto | pago | manuales | borrar | reporte | web"""
+"""Comandos: python -m conciliador importar [carpeta] | revisar | migrar | gasto | pago | manuales | borrar | reporte | web | mp-probar"""
 import argparse
 import os
 from datetime import date
@@ -28,6 +28,38 @@ def clave_nacion(ruta_env: Path = RAIZ / ".env") -> str:
     return leer_clave("BNA_PDF_CLAVE", ruta_env)
 
 
+def probar_mercado_pago(dias: int, guardar: bool, ruta: Path) -> None:
+    """Solo lee: no escribe en la base ni cambia nada en la cuenta de Mercado Pago."""
+    import json
+
+    from conciliador import mercado_pago_api
+
+    token = leer_clave("MP_ACCESS_TOKEN")
+    if not token:
+        raise SystemExit(
+            "Falta MP_ACCESS_TOKEN en .env. Está en Tus integraciones → tu aplicación → "
+            "Credenciales de producción → Access token."
+        )
+    if token.startswith("TEST-"):
+        print("AVISO: es un token de prueba. Con él no aparecen tus movimientos reales.\n")
+    try:
+        cuenta, pagos, crudos = mercado_pago_api.pagos_recientes(mercado_pago_api.pedidor(token), dias)
+    except (mercado_pago_api.ErrorMP, ValueError) as error:
+        raise SystemExit(f"Error: {error}")
+    en_base = None
+    if ruta.exists():  # Solo se cruza con una base que ya existe: conectar crearía una vacía.
+        try:
+            en_base = base.numeros_de_operacion(base.conectar(ruta), "mercado_pago")
+        except base.BaseDesactualizada:
+            print("AVISO: la base está desactualizada, no se cruza con lo importado. Corré `migrar`.\n")
+    print(mercado_pago_api.texto(cuenta, pagos, dias, en_base))
+    if guardar:
+        destino = RAIZ / "entrada" / f"mp-pagos-{date.today():%Y%m%d}.json"
+        destino.parent.mkdir(exist_ok=True)
+        destino.write_text(json.dumps(crudos, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        print(f"\nRespuestas crudas en {destino}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="conciliador")
     comandos = parser.add_subparsers(dest="comando", required=True)
@@ -53,6 +85,9 @@ def main() -> None:
     del_mes.add_argument("mes", help="por ejemplo 2026-11")
     comandos.add_parser("web", help="levanta la app web en http://127.0.0.1:8000")
     comandos.add_parser("openapi", help="imprime el esquema de la API, para los tipos del front")
+    probar = comandos.add_parser("mp-probar", help="lista lo que la API de Mercado Pago ve de tu cuenta (solo lee)")
+    probar.add_argument("--dias", type=int, default=1, help="cuántos días para atrás, de 1 a 364 (por defecto 1)")
+    probar.add_argument("--guardar", action="store_true", help="guarda las respuestas crudas en entrada/")
     argumentos = parser.parse_args()
 
     if argumentos.comando == "openapi":
@@ -64,6 +99,9 @@ def main() -> None:
         return
 
     ruta = Path(os.environ.get("CONCILIADOR_DB", RAIZ / "conciliador.db"))
+    if argumentos.comando == "mp-probar":
+        probar_mercado_pago(argumentos.dias, argumentos.guardar, ruta)
+        return
     if argumentos.comando == "migrar":
         respaldo = base.migrar(ruta)
         print(f"Base actualizada. Respaldo: {respaldo}" if respaldo else "La base ya estaba al día.")

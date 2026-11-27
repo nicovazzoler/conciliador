@@ -755,6 +755,12 @@ def asignar_cotizaciones(motor: Engine) -> None:
                 )
 
 
+def numeros_de_operacion(motor: Engine, fuente: str) -> set[str]:
+    """Los números de operación ya guardados de una fuente, para cruzarlos con otra lectura."""
+    with Session(motor) as sesion:
+        return set(sesion.scalars(select(Movimiento.numero_operacion).where(Movimiento.fuente == fuente)))
+
+
 def contar_sin_usd(motor: Engine) -> int:
     with Session(motor) as sesion:
         return sesion.scalar(
