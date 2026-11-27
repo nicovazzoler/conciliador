@@ -1414,7 +1414,7 @@ export interface components {
             /** Dolares Centavos */
             dolares_centavos: number;
             /** Total Usd Centavos */
-            total_usd_centavos: number;
+            total_usd_centavos: number | null;
             /** Sin Usd */
             sin_usd: number;
         };

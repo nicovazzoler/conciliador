@@ -15,6 +15,11 @@ export function plata(centavos: number, moneda: string = "ARS"): string {
   return `${moneda === "USD" ? "U$D" : "$"} ${importe(centavos)}`;
 }
 
+/** Un monto pasado a dólares. null es que no hubo cotización: "sin datos", nunca U$D 0,00. */
+export function enDolares(centavos: number | null): string {
+  return centavos === null ? "sin datos" : plata(centavos, "USD");
+}
+
 const NOMBRES = [
   "enero", "febrero", "marzo", "abril", "mayo", "junio",
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",

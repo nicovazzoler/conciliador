@@ -14,7 +14,7 @@ import {
 import { aAtender, controlados } from "./atender";
 import { Comprobante, Renglon, Sello } from "./comprobante";
 import { Segmentado } from "./controles";
-import { importe, mesActual, moverMes, nombreMes, plata } from "./formato";
+import { enDolares, importe, mesActual, moverMes, nombreMes, plata } from "./formato";
 import { nombreFuente } from "./fuentes";
 import { Columnas, Leyenda } from "./graficos";
 
@@ -142,7 +142,7 @@ function Contenido({
             <Renglon concepto="Pagado en dólares" monto={plata(totales.dolares_centavos, "USD")} />
             <Renglon
               concepto="Todo pasado a dólares"
-              monto={plata(totales.total_usd_centavos, "USD")}
+              monto={enDolares(totales.total_usd_centavos)}
               sello={totales.sin_usd > 0 ? `${totales.sin_usd} SIN USD` : undefined}
               tono="ojo"
               fuerte
@@ -415,20 +415,24 @@ function Categorias({ reporte, mes }: { reporte: Reporte; mes: string }) {
   const resto = categorias.slice(COLORES.length);
   const filas = principales.map((c, i) => ({
     nombre: c.categoria ?? "Sin categoría",
-    usd: c.total_usd_centavos ?? 0,
-    porcentaje: c.porcentaje ?? 0,
+    usd: c.total_usd_centavos,
+    porcentaje: c.porcentaje,
     color: COLORES[i] ?? "var(--apagado)",
     sola: true,
   }));
-  if (resto.length > 0)
+  if (resto.length > 0) {
+    // "Otras" es "sin datos" solo si ninguna de las que junta tiene cotización.
+    const conUsd = resto.filter((c) => c.total_usd_centavos !== null);
     filas.push({
       nombre: `Otras (${resto.length})`,
-      usd: resto.reduce((suma, c) => suma + (c.total_usd_centavos ?? 0), 0),
-      porcentaje: Math.round(resto.reduce((suma, c) => suma + (c.porcentaje ?? 0), 0) * 10) / 10,
+      usd: conUsd.length ? conUsd.reduce((suma, c) => suma + (c.total_usd_centavos ?? 0), 0) : null,
+      porcentaje: conUsd.length ? Math.round(conUsd.reduce((suma, c) => suma + (c.porcentaje ?? 0), 0) * 10) / 10 : null,
       color: "var(--apagado)",
       sola: false,
     });
-  const total = filas.reduce((suma, f) => suma + f.usd, 0);
+  }
+  const total = filas.reduce((suma, f) => suma + (f.usd ?? 0), 0);
+  const sinUsd = categorias.reduce((suma, c) => suma + c.sin_usd, 0);
 
   return (
     <Comprobante
@@ -448,9 +452,9 @@ function Categorias({ reporte, mes }: { reporte: Reporte; mes: string }) {
         <>
           {total > 0 ? (
             <div className="composicion" aria-hidden="true">
-              {filas.map((f) => (
-                <span key={f.nombre} style={{ width: `${(f.usd / total) * 100}%`, background: f.color }} />
-              ))}
+              {filas.map((f) =>
+                f.usd === null ? null : <span key={f.nombre} style={{ width: `${(f.usd / total) * 100}%`, background: f.color }} />,
+              )}
             </div>
           ) : (
             <p className="nota">Sin cotización del dólar todavía: los montos en USD aparecen al bajarla.</p>
@@ -466,8 +470,8 @@ function Categorias({ reporte, mes }: { reporte: Reporte; mes: string }) {
                     <>
                       <span className="leyenda-punto" style={{ background: f.color }} aria-hidden="true" />
                       <span className="leyenda-nombre">{f.nombre}</span>
-                      <span className="leyenda-monto">{plata(f.usd, "USD")}</span>
-                      <span className="leyenda-porcentaje">{f.porcentaje.toLocaleString("es-AR")}%</span>
+                      <span className="leyenda-monto">{enDolares(f.usd)}</span>
+                      <span className="leyenda-porcentaje">{f.porcentaje === null ? "" : `${f.porcentaje.toLocaleString("es-AR")}%`}</span>
                     </>
                   }
                 />
@@ -475,6 +479,11 @@ function Categorias({ reporte, mes }: { reporte: Reporte; mes: string }) {
               </li>
             ))}
           </ul>
+          {total > 0 && sinUsd > 0 && (
+            <p className="nota">
+              {sinUsd === 1 ? "Un gasto sigue" : `${sinUsd} gastos siguen`} sin cotización: los montos en USD están incompletos.
+            </p>
+          )}
         </>
       )}
     </Comprobante>

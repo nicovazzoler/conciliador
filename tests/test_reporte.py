@@ -228,6 +228,31 @@ def test_el_texto_no_consulta_la_base():
     assert salida.count("(nada que avisar)") == 5
 
 
+def test_sin_cotizacion_el_total_en_usd_es_sin_datos_y_no_cero(tmp_path):
+    motor = base.conectar(tmp_path / "p.db")
+    assert base.consultar(motor, "totales", mes="2026-10")[0]["total_usd_centavos"] == 0  # Sin gastos: cero de verdad.
+    gasto_simple(motor, "1", "SUPER DEMO", 3_000_000)
+    (totales,) = base.consultar(motor, "totales", mes="2026-10")
+    assert (totales["total_usd_centavos"], totales["sin_usd"]) == (None, 1)
+    salida = reporte.texto(reporte.armar(motor, "2026-10"))
+    assert "en total, sin datos (1 sin USD)" in salida
+    assert "en total, U$D 0,00" not in salida
+    assert "sin datos  (1 sin USD)" in salida  # La categoría tampoco muestra cero.
+
+
+def test_si_faltan_algunas_cotizaciones_el_texto_dice_cuantas():
+    datos = reporte.Reporte(
+        mes="2026-10",
+        totales={"pesos_centavos": 150_000, "dolares_centavos": 0, "total_usd_centavos": 100, "sin_usd": 2},
+        categorias=[{"categoria": "Super", "total_usd_centavos": 100, "porcentaje": 100.0, "sin_usd": 2}],
+        fijos=[], cuotas=[], dias_sobre_tope=[], resumenes=[], pendientes=0,
+        importado={"mercado_pago": 1, "resumenes": None},
+    )
+    salida = reporte.texto(datos)
+    assert "en total, U$D 1,00 (2 sin USD)" in salida
+    assert "Super" in salida and "100,0%  (2 sin USD)" in salida
+
+
 def test_sin_mercado_pago_del_mes_los_fijos_no_faltan_y_con_el_pdf_si(tmp_path):
     motor = base.conectar(tmp_path / "p.db")
     base.reemplazar_plan(motor, plan.PlanLeido(fijos=[plan.FijoPlan("Luz", "LUZ DEMO", 100, "ARS", 5)]))
