@@ -22,18 +22,23 @@ No depende de conectarse al banco: lee los resúmenes en PDF que el usuario ya d
 ## Operating Context
 
 - Cada mes se descargan los resúmenes en PDF y se importan; lo que no viene en un PDF (efectivo, débitos de cuentas que no se importan, cuotas en tarjetas de familiares, pagos de resúmenes) se carga a mano.
-- Un plan (`plan.csv`) define los gastos fijos y las cuotas esperadas.
+- Un plan define los gastos fijos y las cuotas esperadas. Se edita desde la app; `plan.csv` sigue sirviendo para importarlo o exportarlo.
+- Las compras con tarjeta cuentan en el mes en que vence el resumen (mes vencido). Mercado Pago y lo cargado a mano, en el mes en que salió la plata.
 - Los gastos grandes sin anticipar piden confirmación y categoría.
-- Las operaciones son muchas por mes: entran importadas o leídas por el agente desde una captura, no una por una a mano.
+- Las operaciones de inversión son muchas por mes: se cargan desde capturas de pantalla que lee Claude, y la persona revisa lo leído antes de guardar.
 - Uso típico: en el celular para cargar un gasto o mirar el mes; en la computadora para importar y revisar.
 
 ## Capabilities and Constraints
 
-- **Gastos (construido):** reporte del mes con totales en pesos y en USD, fijos (sin datos, sin debitar, más caro, más barato, bien), cuotas (sin datos, falta, sin plan, repetida, otro número, bien), días que superan el tope diario de $ 200.000, resúmenes de tarjeta (nada que pagar, impago, parcial, avisado, confirmado), gasto por categoría; carga y borrado de gastos y pagos de tarjeta; revisión de pendientes y categorización por grupos con reglas; importación de PDFs.
-- **Por construir en la app web:** la sección se llama **Gastos** (no "Mes") y permite ir a meses anteriores; **Movimientos** (todo lo que entró y salió, con filtros y búsqueda) y **Plan** (editar fijos y cuotas desde la app, en lugar de `plan.csv`).
-- **Portafolio y Trading (por construir):** tenencias derivadas de las operaciones, valor actual, ganancia o pérdida por posición; historial de compras y ventas con ganancia **realizada** (lo cerrado) y **no realizada** (lo abierto, valuado al precio actual). Opera sobre todo en Quantfury (acciones y cripto, en USD) y algo en Binance. Opera seguido, así que cargar a mano no alcanza: la intención es importar el historial o que el agente de la etapa 3 lea una captura de pantalla de las operaciones y las cargue, con confirmación.
-- **Precios:** la idea del usuario es tomarlos de Google Finance y, si falta alguno, de otra fuente. Por decidir: Google Finance no tiene API oficial, así que hay que validar la fuente antes de construir.
-- **Por decidir:** el formato de exportación de Quantfury y de Binance.
+- **Gastos (construido):** reporte del mes con meses anteriores: totales en pesos y en USD, fijos (sin datos, sin debitar, más caro, más barato, bien), cuotas (sin datos, falta, sin plan, repetida, otro número, bien), días que superan el tope diario de $ 200.000, resúmenes de tarjeta (nada que pagar, impago, parcial, avisado, confirmado), gasto por categoría y qué hacer con cada aviso. Mes a mes partido por fuente, e historial de cada categoría y de cada fijo.
+- **Cargar, Revisar e Importar (construido):** carga y borrado de gastos y pagos de tarjeta; revisión de pendientes y categorización por grupos con reglas; importación de PDFs.
+- **Movimientos (construido):** todo lo que entró y salió, con buscador y filtros por fuente y categoría, para corregir la categoría de cualquiera. Categorías y reglas se editan desde la app.
+- **Plan (construido):** fijos y cuotas editables desde la app.
+- **Inversiones (construido):** posiciones con precio promedio, ganancia **realizada** y **no realizada**, la cartera día por día, stop loss y take profit, y acciones en otras monedas convertidas con el cambio del día. Opera sobre todo en Quantfury (acciones y cripto, en USD) y algo en Binance; las operaciones se cargan desde capturas que lee Claude o a mano.
+- **Precios:** cripto desde Binance (API pública) y acciones desde Yahoo Finance (sin API oficial: se usa el endpoint de sus gráficos). Sin precio, no se inventa uno.
+- **Sin cotización:** lo que no tiene dólar del día se muestra "sin datos" y se dice cuántos movimientos faltan; nunca U$D 0,00.
+- **Por construir:** un chat con un agente propio para dictarle un gasto o pasarle cualquier cosa (una captura, un PDF, una tenencia) y que la cargue, con la confirmación de lo importante en la API y no en el modelo.
+- **Por decidir:** si además de las capturas hace falta importar el historial exportado de Quantfury y de Binance, y en qué formato.
 - Montos en formato argentino: `$ 1.234,56` y `U$D 88,24`. Toda la interfaz en español rioplatense.
 - Backend FastAPI con esquemas que generan los tipos de TypeScript; front Vite + React + TypeScript.
 - Sin login: la app escucha solo en la máquina del usuario. La demo pública usa datos inventados con el mismo formato.
@@ -41,7 +46,8 @@ No depende de conectarse al banco: lee los resúmenes en PDF que el usuario ya d
 ## Evidence on Hand
 
 - Datos de demo inventados en `demo/` (tres PDF y un `plan.csv`), con un caso de cada alerta.
-- No hay logo, marca, testimonios ni capturas reales. Los datos reales del usuario nunca se usan en maquetas, demo, documentación ni capturas.
+- Capturas de la app con la demo en `docs/capturas/`, para el README.
+- No hay logo, marca ni testimonios. Los datos reales del usuario nunca se usan en maquetas, demo, documentación ni capturas.
 
 ## Product Principles
 
