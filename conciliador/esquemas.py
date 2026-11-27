@@ -9,7 +9,7 @@ class Totales(BaseModel):
     movimientos: int
     pesos_centavos: int
     dolares_centavos: int
-    total_usd_centavos: int
+    total_usd_centavos: int | None  # Sin cotización no hay USD: ver sin_usd.
     sin_usd: int
 
 

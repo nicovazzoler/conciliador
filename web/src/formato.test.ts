@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diaYMes, importe, mesActual, nombreMes, plata } from "./formato";
+import { diaYMes, enDolares, importe, mesActual, nombreMes, plata } from "./formato";
 
 describe("importe", () => {
   it("usa punto para miles y coma para decimales, como en los PDF", () => {
@@ -21,6 +21,14 @@ describe("plata", () => {
   it("antepone el símbolo de la moneda", () => {
     expect(plata(8824, "USD")).toBe("U$D 88,24");
     expect(plata(1500000)).toBe("$ 15.000,00");
+  });
+});
+
+describe("enDolares", () => {
+  it("sin cotización dice sin datos, no U$D 0,00", () => {
+    expect(enDolares(null)).toBe("sin datos");
+    expect(enDolares(0)).toBe("U$D 0,00");
+    expect(enDolares(5250)).toBe("U$D 52,50");
   });
 });
 

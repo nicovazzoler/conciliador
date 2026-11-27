@@ -19,4 +19,4 @@ packages = ["conciliador", "conciliador.lectores"]
 conciliador = ["migraciones/*", "migraciones/versions/*", "consultas/*.sql"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "timbre"]

@@ -108,14 +108,10 @@ def texto(reporte: Reporte) -> str:
         + "; resúmenes que vencen este mes: "
         + (importado["resumenes"] or "ninguno (las cuotas no se controlan)"),
         f"Gastado: $ {importe(t['pesos_centavos'])} en pesos y U$D {importe(t['dolares_centavos'])} "
-        f"en dólares; en total, U$D {importe(t['total_usd_centavos'])}",
+        f"en dólares; en total, {_usd(t['total_usd_centavos'], t['sin_usd'])}",
     ]
 
-    lineas += _seccion("Por categoría (USD)", [
-        f"{c['categoria']:<30} {importe(c['total_usd_centavos'] or 0):>10}  "
-        f"{f'{c['porcentaje'] or 0:.1f}'.replace('.', ','):>5}%"
-        for c in reporte.categorias
-    ])
+    lineas += _seccion("Por categoría (USD)", [_categoria(c) for c in reporte.categorias])
     lineas += _seccion("Fijos", [
         f"{f['estado']:<12} {f['concepto']:<30} anotado {_plata(f['anotado_centavos'], f['moneda'])}"
         + (f"   cobrado {_plata(f['cobrado_centavos'], f['moneda'])} ({_pagos(f['pagos'])})"
@@ -142,6 +138,21 @@ def texto(reporte: Reporte) -> str:
     ])
     lineas += ["", f"Avisos: {reporte.pendientes} gastos para revisar, {t['sin_usd']} movimientos sin USD"]
     return "\n".join(lineas)
+
+
+def _usd(centavos: int | None, sin_usd: int) -> str:
+    """Un monto pasado a dólares: sin cotización es "sin datos", y si faltan algunos se dice cuántos."""
+    monto = "sin datos" if centavos is None else f"U$D {importe(centavos)}"
+    return f"{monto} ({sin_usd} sin USD)" if sin_usd else monto
+
+
+def _categoria(c: dict) -> str:
+    nombre = c["categoria"] or "Sin categoría"  # La misma etiqueta que en la web.
+    if c["total_usd_centavos"] is None:
+        return f"{nombre:<30} {'sin datos':>10}  ({c['sin_usd']} sin USD)"
+    porcentaje = f"{c['porcentaje'] or 0:.1f}".replace(".", ",")
+    linea = f"{nombre:<30} {importe(c['total_usd_centavos']):>10}  {porcentaje:>5}%"
+    return f"{linea}  ({c['sin_usd']} sin USD)" if c["sin_usd"] else linea
 
 
 def _plata(centavos: int, moneda: str) -> str:
